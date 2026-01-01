@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Play 2048 - A sliding puzzle game built with Rust and WebAssembly" />
+    <title>2048 - Rust + WASM</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <h1>2048</h1>
+        <p class="subtitle">Rust + WebAssembly Edition</p>
+      </header>
+
+      <div class="game-header">
+        <div class="score-container">
+          <div class="score-label">SCORE</div>
+          <div id="score" class="score-value">0</div>
+        </div>
+        <button id="new-game" class="btn">New Game</button>
+      </div>
+
+      <div class="seed-container">
+        <label for="seed-input">Seed:</label>
+        <input type="number" id="seed-input" value="42" min="0" />
+      </div>
+
+      <div class="game-container">
+        <canvas id="game-canvas" width="400" height="400"></canvas>
+        <div id="game-over" class="game-over hidden">
+          <div class="game-over-content">
+            <h2>Game Over!</h2>
+            <p>Final Score: <span id="final-score">0</span></p>
+            <p>Max Tile: <span id="max-tile">0</span></p>
+            <button id="restart" class="btn">Play Again</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <p>Use <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> or <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> to move</p>
+      </div>
+
+      <footer>
+        <p>Built with <a href="https://www.rust-lang.org/" target="_blank">Rust</a> + <a href="https://webassembly.org/" target="_blank">WebAssembly</a></p>
+      </footer>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

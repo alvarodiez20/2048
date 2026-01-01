@@ -1,0 +1,13 @@
+[package]
+name = "game-2048-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Pure Rust 2048 game engine with deterministic, seedable PRNG"
+
+[dependencies]
+rand = { version = "0.8", default-features = false, features = ["small_rng"] }
+
+[dev-dependencies]
+# For property-based testing (optional)
+# proptest = "1.0"

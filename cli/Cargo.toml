@@ -1,0 +1,17 @@
+[package]
+name = "game-2048-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command-line interface for the 2048 game"
+
+[[bin]]
+name = "game-2048-cli"
+path = "src/main.rs"
+
+[dependencies]
+game-2048-core.workspace = true
+clap = { version = "4.4", features = ["derive"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
