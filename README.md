@@ -1,6 +1,7 @@
 # 2048 - Rust + WebAssembly
 
 [![CI](https://github.com/alvarodiez20/2048/actions/workflows/ci.yml/badge.svg)](https://github.com/alvarodiez20/2048/actions/workflows/ci.yml)
+[![Deploy](https://github.com/alvarodiez20/2048/actions/workflows/deploy.yml/badge.svg)](https://github.com/alvarodiez20/2048/actions/workflows/deploy.yml)
 
 **[🎮 Play the game online!](https://alvarodiez20.github.io/2048/)**
 
