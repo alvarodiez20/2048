@@ -5,18 +5,15 @@ This directory contains the reinforcement learning training pipeline for the 204
 ## Setup
 
 ```bash
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Install uv if you don't have it
+# curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (Python 3.12+)
+uv sync
 
-# Optional: Install Rust Python bindings for faster training
-cd ../python
-pip install maturin
-maturin develop --release
-cd ../rl
+# Or if you want to use a specific Python version
+uv python install 3.12
+uv sync
 ```
 
 ## Quick Start
@@ -25,10 +22,10 @@ cd ../rl
 
 ```bash
 # Basic training (10k episodes)
-python train.py --episodes 10000 --seed 42
+uv run train.py --episodes 10000 --seed 42
 
 # Extended training with custom parameters
-python train.py \
+uv run train.py \
     --episodes 50000 \
     --lr 1e-4 \
     --batch-size 256 \
@@ -36,27 +33,27 @@ python train.py \
     --log-dir runs/experiment1
 
 # Monitor training with TensorBoard
-tensorboard --logdir runs
+uv run tensorboard --logdir runs
 ```
 
 ### Evaluation
 
 ```bash
 # Evaluate a trained model
-python evaluate.py --model checkpoints/best_model.pt --episodes 100
+uv run evaluate.py --model checkpoints/best_model.pt --episodes 100
 
 # Compare with random baseline
-python evaluate.py --model checkpoints/best_model.pt --episodes 100 --compare-random
+uv run evaluate.py --model checkpoints/best_model.pt --episodes 100 --compare-random
 ```
 
 ### Export for Web
 
 ```bash
 # Export to ONNX
-python export_onnx.py --model checkpoints/best_model.pt --output ../web/public/models/ai_model.onnx
+uv run export_onnx.py --model checkpoints/best_model.pt --output ../web/public/models/ai_model.onnx
 
 # Export with quantization (smaller file)
-python export_onnx.py --model checkpoints/best_model.pt --output ai_model.onnx --quantize
+uv run export_onnx.py --model checkpoints/best_model.pt --output ai_model.onnx --quantize
 ```
 
 ## Files
