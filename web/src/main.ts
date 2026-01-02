@@ -211,6 +211,9 @@ function setupEventListeners() {
     // Keyboard input
     document.addEventListener('keydown', handleKeyDown);
 
+    // Touch/swipe support for mobile
+    setupTouchControls();
+
     // New game button
     document.getElementById('new-game')?.addEventListener('click', () => {
         const seedInput = document.getElementById('seed-input') as HTMLInputElement;
@@ -247,6 +250,76 @@ function setupEventListeners() {
             startAI();
         }
     });
+}
+
+// =============================================================================
+// Touch Controls for Mobile
+// =============================================================================
+
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+
+const MIN_SWIPE_DISTANCE = 50; // Minimum distance for a swipe to register
+
+function setupTouchControls() {
+    const canvas = document.getElementById('game-canvas');
+    if (!canvas) return;
+
+    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+}
+
+function handleTouchStart(e: TouchEvent) {
+    e.preventDefault(); // Prevent scrolling
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+}
+
+function handleTouchMove(e: TouchEvent) {
+    e.preventDefault(); // Prevent scrolling
+}
+
+function handleTouchEnd(e: TouchEvent) {
+    e.preventDefault();
+
+    // Stop AI when user swipes
+    if (aiRunning) {
+        stopAI();
+    }
+
+    if (!game || game.isDone()) return;
+
+    const touch = e.changedTouches[0];
+    touchEndX = touch.clientX;
+    touchEndY = touch.clientY;
+
+    const deltaX = touchEndX - touchStartX;
+    const deltaY = touchEndY - touchStartY;
+
+    // Determine if horizontal or vertical swipe
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
+        if (Math.abs(deltaX) > MIN_SWIPE_DISTANCE) {
+            if (deltaX > 0) {
+                performAction(Action.Right);
+            } else {
+                performAction(Action.Left);
+            }
+        }
+    } else {
+        // Vertical swipe
+        if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE) {
+            if (deltaY > 0) {
+                performAction(Action.Down);
+            } else {
+                performAction(Action.Up);
+            }
+        }
+    }
 }
 
 function handleKeyDown(e: KeyboardEvent) {

@@ -234,6 +234,25 @@ header .subtitle {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.mobile-controls {
+  display: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* Show mobile controls on small screens */
+@media (max-width: 768px),
+(hover: none) {
+  .desktop-controls {
+    display: none;
+  }
+
+  .mobile-controls {
+    display: inline;
+  }
+}
+
 /* Footer */
 footer {
   margin-top: 32px;

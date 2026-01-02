@@ -51,9 +51,10 @@ impl Game {
         let action = match Action::from_u8(action) {
             Some(a) => a,
             None => {
-                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                    format!("Invalid action: {}. Must be 0-3 (Up, Down, Left, Right).", action),
-                ));
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "Invalid action: {}. Must be 0-3 (Up, Down, Left, Right).",
+                    action
+                )));
             }
         };
 
