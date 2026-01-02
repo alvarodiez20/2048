@@ -67,11 +67,11 @@ let aiRunning = false;
 let aiInterval: number | null = null;
 
 // Canvas dimensions
-const CANVAS_SIZE = 400;
+let CANVAS_SIZE = 400;
 const GRID_SIZE = 4;
 const PADDING = 12;
 const CELL_GAP = 10;
-const CELL_SIZE = (CANVAS_SIZE - 2 * PADDING - (GRID_SIZE - 1) * CELL_GAP) / GRID_SIZE;
+let CELL_SIZE = (CANVAS_SIZE - 2 * PADDING - (GRID_SIZE - 1) * CELL_GAP) / GRID_SIZE;
 
 // =============================================================================
 // Initialization
@@ -85,9 +85,12 @@ async function main() {
     canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     ctx = canvas.getContext('2d')!;
 
-    // Set canvas size
-    canvas.width = CANVAS_SIZE;
-    canvas.height = CANVAS_SIZE;
+    // Set initial canvas size responsively
+    updateCanvasSize();
+    window.addEventListener('resize', () => {
+        updateCanvasSize();
+        render();
+    });
 
     // Initialize game
     const seedInput = document.getElementById('seed-input') as HTMLInputElement;
@@ -98,6 +101,28 @@ async function main() {
 
     // Initialize AI
     await initializeAI();
+}
+
+function updateCanvasSize() {
+    if (!canvas) return;
+
+    // Calculate size based on viewport
+    let size = 400;
+
+    if (window.innerWidth <= 768) {
+        // Mobile: 90vw but max 400px
+        size = Math.min(Math.floor(window.innerWidth * 0.9), 400);
+    }
+
+    // Update global constants
+    CANVAS_SIZE = size;
+    CELL_SIZE = (CANVAS_SIZE - 2 * PADDING - (GRID_SIZE - 1) * CELL_GAP) / GRID_SIZE;
+
+    // Set canvas size (both internal and displayed size match to avoid distortion)
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
 }
 
 async function initializeAI() {
