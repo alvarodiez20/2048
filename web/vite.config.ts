@@ -7,5 +7,5 @@ export default defineConfig({
     build: {
         target: 'esnext',
     },
-    base: './', // Use relative paths for GitHub Pages deployment
+    base: '/2048/', // GitHub Pages subdirectory
 });
