@@ -284,11 +284,7 @@ footer a:hover {
     gap: 12px;
   }
 
-  #game-canvas {
-    width: 100%;
-    height: auto;
-    max-width: 320px;
-  }
+  /* Canvas size controlled by JavaScript for perfect squares */
 }
 
 /* Animation for score change */
@@ -490,312 +486,312 @@ footer a:hover {
 
 .hidden {
   display: none !important;
-}/* =============================================================================
+}
+
+/* =============================================================================
    Mobile UX Improvements
    Enhanced touch experience for phones and tablets
    ============================================================================= */
 
 /* Mobile-specific responsive adjustments */
 @media (max-width: 768px) {
-    :root {
-        --canvas-size: min(90vw, 400px);
-    }
+  :root {
+    --canvas-size: min(90vw, 400px);
+  }
 
-    body {
-        padding: 12px;
-        align-items: flex-start;
-    }
+  body {
+    padding: 12px;
+    align-items: flex-start;
+  }
 
-    #app {
-        max-width: 100%;
-        padding-top: 8px;
-    }
+  #app {
+    max-width: 100%;
+    padding-top: 8px;
+  }
 
-    /* Compact header for mobile */
-    header h1 {
-        font-size: 3rem;
-        margin-bottom: 4px;
-    }
+  /* Compact header for mobile */
+  header h1 {
+    font-size: 3rem;
+    margin-bottom: 4px;
+  }
 
-    header .subtitle {
-        font-size: 0.8rem;
-    }
+  header .subtitle {
+    font-size: 0.8rem;
+  }
 
-    /* Larger, touch-friendly buttons */
-    .btn {
-        min-height: 48px;
-        font-size: 1rem;
-        padding: 12px 24px;
-        -webkit-tap-highlight-color: transparent;
-    }
+  /* Larger, touch-friendly buttons */
+  .btn {
+    min-height: 48px;
+    font-size: 1rem;
+    padding: 12px 24px;
+    -webkit-tap-highlight-color: transparent;
+  }
 
-    /* Simplified game header on mobile */
-    .game-header {
-        margin-bottom: 12px;
-        gap: 8px;
-    }
+  /* Simplified game header on mobile */
+  .game-header {
+    margin-bottom: 12px;
+    gap: 8px;
+  }
 
-    .score-container {
-        padding: 8px 16px;
-        flex: 1;
-    }
+  .score-container {
+    padding: 8px 16px;
+    flex: 1;
+  }
 
-    .score-label {
-        font-size: 0.65rem;
-    }
+  .score-label {
+    font-size: 0.65rem;
+  }
 
-    .score-value {
-        font-size: 1.5rem;
-    }
+  .score-value {
+    font-size: 1.5rem;
+  }
 
-    /* Touch-optimized seed input */
-    .seed-container {
-        margin-bottom: 12px;
-    }
+  /* Touch-optimized seed input */
+  .seed-container {
+    margin-bottom: 12px;
+  }
 
-    .seed-container input {
-        min-height: 44px;
-        font-size: 16px;
-        /* Prevents zoom on iOS */
-        padding: 8px 12px;
-    }
+  .seed-container input {
+    min-height: 44px;
+    font-size: 16px;
+    /* Prevents zoom on iOS */
+    padding: 8px 12px;
+  }
 
-    .seed-container label {
-        font-size: 0.9rem;
-    }
+  .seed-container label {
+    font-size: 0.9rem;
+  }
 
-    /* Responsive canvas */
-    #game-canvas {
-        width: var(--canvas-size) !important;
-        height: var(--canvas-size) !important;
-        touch-action: none;
-        /* Better touch handling */
-    }
+  /* Responsive canvas - size controlled by JavaScript */
+  #game-canvas {
+    touch-action: none;
+    /* Better touch handling */
+  }
 
-    .game-container {
-        margin-bottom: 16px;
-    }
+  .game-container {
+    margin-bottom: 16px;
+  }
 
-    /* Enhanced game over overlay */
-    .game-over-content {
-        padding: 24px;
-    }
+  /* Enhanced game over overlay */
+  .game-over-content {
+    padding: 24px;
+  }
 
-    .game-over-content h2 {
-        font-size: 2rem;
-    }
+  .game-over-content h2 {
+    font-size: 2rem;
+  }
 
-    .game-over-content p {
-        font-size: 1.1rem;
-    }
+  .game-over-content p {
+    font-size: 1.1rem;
+  }
 
-    /* Compact controls text */
-    .controls {
-        margin-top: 16px;
-        font-size: 1rem;
-    }
+  /* Compact controls text */
+  .controls {
+    margin-top: 16px;
+    font-size: 1rem;
+  }
 
-    .mobile-controls {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
+  .mobile-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
 
-    .mobile-controls::before {
-        content: '👆';
-        font-size: 1.2rem;
-    }
+  .mobile-controls::before {
+    content: '👆';
+    font-size: 1.2rem;
+  }
 
-    /* Optimized AI section for mobile */
-    .ai-section {
-        margin-top: 16px;
-        padding: 16px;
-    }
+  /* Optimized AI section for mobile */
+  .ai-section {
+    margin-top: 16px;
+    padding: 16px;
+  }
 
-    .ai-section h3 {
-        font-size: 1.1rem;
-        margin-bottom: 12px;
-    }
+  .ai-section h3 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+  }
 
-    /* Stack model selector on mobile */
-    .ai-model-select {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-        margin-bottom: 12px;
-    }
+  /* Stack model selector on mobile */
+  .ai-model-select {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
 
-    .ai-model-select select {
-        width: 100%;
-        min-height: 44px;
-        font-size: 16px;
-        /* Prevents zoom */
-    }
+  .ai-model-select select {
+    width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+    /* Prevents zoom */
+  }
 
-    /* Horizontal button layout */
-    .ai-controls {
-        flex-direction: row;
-        gap: 8px;
-        margin-bottom: 12px;
-    }
+  /* Horizontal button layout */
+  .ai-controls {
+    flex-direction: row;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
 
-    .btn-ai {
-        flex: 1;
-        min-height: 48px;
-        font-size: 0.9rem;
-        padding: 10px;
-    }
+  .btn-ai {
+    flex: 1;
+    min-height: 48px;
+    font-size: 0.9rem;
+    padding: 10px;
+  }
 
-    /* Compact speed slider */
-    .ai-speed {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-    }
+  /* Compact speed slider */
+  .ai-speed {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
 
-    .ai-speed input[type="range"] {
-        width: 100%;
-    }
+  .ai-speed input[type="range"] {
+    width: 100%;
+  }
 
-    /* Status and hint display */
-    .ai-status {
-        font-size: 0.85rem;
-        padding: 8px;
-    }
+  /* Status and hint display */
+  .ai-status {
+    font-size: 0.85rem;
+    padding: 8px;
+  }
 
-    .ai-hint {
-        font-size: 0.9rem;
-        padding: 10px;
-    }
+  .ai-hint {
+    font-size: 0.9rem;
+    padding: 10px;
+  }
 
-    /* Footer */
-    footer {
-        margin-top: 24px;
-        font-size: 0.8rem;
-    }
+  /* Footer */
+  footer {
+    margin-top: 24px;
+    font-size: 0.8rem;
+  }
 }
 
 /* Tablet-specific adjustments (portrait) */
 @media (min-width: 769px) and (max-width: 1024px) and (orientation: portrait) {
-    :root {
-        --canvas-size: 450px;
-    }
+  :root {
+    --canvas-size: 450px;
+  }
 
-    .btn {
-        min-height: 44px;
-    }
+  .btn {
+    min-height: 44px;
+  }
 
-    #game-canvas {
-        touch-action: none;
-    }
+  #game-canvas {
+    touch-action: none;
+  }
 }
 
 /* Landscape mobile - horizontal layout */
 @media (max-width: 896px) and (orientation: landscape) {
-    body {
-        align-items: center;
-        padding: 8px;
-    }
+  body {
+    align-items: center;
+    padding: 8px;
+  }
 
-    #app {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        grid-template-rows: auto 1fr auto;
-        gap: 16px;
-        max-width: 100%;
-    }
+  #app {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto 1fr auto;
+    gap: 16px;
+    max-width: 100%;
+  }
 
-    header {
-        grid-column: 1 / -1;
-        margin-bottom: 0;
-    }
+  header {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
 
-    header h1 {
-        font-size: 2.5rem;
-    }
+  header h1 {
+    font-size: 2.5rem;
+  }
 
-    .game-container {
-        grid-row: 2;
-        grid-column: 1;
-    }
+  .game-container {
+    grid-row: 2;
+    grid-column: 1;
+  }
 
-    :root {
-        --canvas-size: min(45vh, 300px);
-    }
+  :root {
+    --canvas-size: min(45vh, 300px);
+  }
 
-    .ai-section {
-        grid-row: 2;
-        grid-column: 2;
-        margin-top: 0;
-    }
+  .ai-section {
+    grid-row: 2;
+    grid-column: 2;
+    margin-top: 0;
+  }
 
-    .controls,
-    footer {
-        grid-column: 1 / -1;
-    }
+  .controls,
+  footer {
+    grid-column: 1 / -1;
+  }
 }
 
 /* Visual feedback for touch interactions */
 @media (hover: none) {
 
-    /* Active state for better feedback */
-    .btn:active {
-        transform: scale(0.96);
-        box-shadow: 0 2px 10px var(--accent-glow);
-    }
+  /* Active state for better feedback */
+  .btn:active {
+    transform: scale(0.96);
+    box-shadow: 0 2px 10px var(--accent-glow);
+  }
 
-    .btn-ai:active {
-        transform: scale(0.96);
-    }
+  .btn-ai:active {
+    transform: scale(0.96);
+  }
 
-    /* Canvas touch feedback */
-    #game-canvas {
-        cursor: grab;
-    }
+  /* Canvas touch feedback */
+  #game-canvas {
+    cursor: grab;
+  }
 
-    #game-canvas:active {
-        cursor: grabbing;
-    }
+  #game-canvas:active {
+    cursor: grabbing;
+  }
 
-    /* Prevent text selection on touch */
-    * {
-        -webkit-user-select: none;
-        user-select: none;
-        -webkit-touch-callout: none;
-    }
+  /* Prevent text selection on touch */
+  * {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
 
-    /* Allow text selection for inputs */
-    input,
-    select,
-    textarea {
-        -webkit-user-select: text;
-        user-select: text;
-    }
+  /* Allow text selection for inputs */
+  input,
+  select,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 /* High DPI displays */
 @media (-webkit-min-device-pixel-ratio: 2),
 (min-resolution: 192dpi) {
-    #game-canvas {
-        image-rendering: -webkit-optimize-contrast;
-        image-rendering: crisp-edges;
-    }
+  #game-canvas {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
 }
 
 /* Dark mode considerations for OLED screens */
 @media (prefers-color-scheme: dark) {
-    :root {
-        --bg-primary: #000000;
-        --bg-secondary: #0a0a0a;
-    }
+  :root {
+    --bg-primary: #000000;
+    --bg-secondary: #0a0a0a;
+  }
 }
 
 /* Reduce motion for accessibility */
 @media (prefers-reduced-motion: reduce) {
-    * {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
