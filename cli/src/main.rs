@@ -176,7 +176,7 @@ fn run_headless(args: &Args, episodes: u32) {
     // Compute statistics
     let avg_score = total_score as f64 / episodes as f64;
     scores.sort();
-    let median_score = if episodes % 2 == 0 {
+    let median_score = if episodes.is_multiple_of(2) {
         (scores[(episodes / 2 - 1) as usize] + scores[(episodes / 2) as usize]) as f64 / 2.0
     } else {
         scores[(episodes / 2) as usize] as f64

@@ -127,6 +127,5 @@ impl WasmGame {
 /// Initialize panic hook for better error messages in the browser console.
 #[wasm_bindgen(start)]
 pub fn init() {
-    #[cfg(feature = "console_error_panic_hook")]
-    console_error_panic_hook::set_once();
+    // Panic hook initialization can be added here if needed
 }
