@@ -300,27 +300,80 @@ function handleTouchEnd(e: TouchEvent) {
     const deltaX = touchEndX - touchStartX;
     const deltaY = touchEndY - touchStartY;
 
+    let action: number | null = null;
+
     // Determine if horizontal or vertical swipe
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
         // Horizontal swipe
         if (Math.abs(deltaX) > MIN_SWIPE_DISTANCE) {
             if (deltaX > 0) {
-                performAction(Action.Right);
+                action = Action.Right;
+                showSwipeIndicator('→');
             } else {
-                performAction(Action.Left);
+                action = Action.Left;
+                showSwipeIndicator('←');
             }
         }
     } else {
         // Vertical swipe
         if (Math.abs(deltaY) > MIN_SWIPE_DISTANCE) {
             if (deltaY > 0) {
-                performAction(Action.Down);
+                action = Action.Down;
+                showSwipeIndicator('↓');
             } else {
-                performAction(Action.Up);
+                action = Action.Up;
+                showSwipeIndicator('↑');
             }
         }
     }
+
+    if (action !== null) {
+        performAction(action);
+    }
 }
+
+// Visual feedback for swipe direction
+function showSwipeIndicator(arrow: string) {
+    const canvas = document.getElementById('game-canvas');
+    if (!canvas) return;
+
+    const indicator = document.createElement('div');
+    indicator.textContent = arrow;
+    indicator.style.cssText = `
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 4rem;
+        color: rgba(233, 69, 96, 0.8);
+        pointer-events: none;
+        z-index: 100;
+        animation: swipeFeedback 0.3s ease-out;
+    `;
+
+    canvas.parentElement?.appendChild(indicator);
+    setTimeout(() => indicator.remove(), 300);
+}
+
+// Add swipe animation
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes swipeFeedback {
+        0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.5);
+        }
+        50% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+        100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
+`;
+document.head.appendChild(style);
 
 function handleKeyDown(e: KeyboardEvent) {
     // Stop AI when user presses a key
