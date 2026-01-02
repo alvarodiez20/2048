@@ -110,7 +110,7 @@ async function initializeAI() {
     // Load model manifest
     try {
         const { loadModelManifest } = await import('./ai-player');
-        const models = await loadModelManifest('/models/');
+        const models = await loadModelManifest('models/');
 
         // Populate dropdown with available models
         for (const model of models) {
@@ -172,7 +172,7 @@ async function loadSelectedModel() {
             const modelFile = selectedOption.dataset.file || `${modelId}.onnx`;
 
             const { AIPlayer: AIPlayerClass } = await import('./ai-player');
-            aiPlayer = new AIPlayerClass(`/models/${modelFile}`, modelType);
+            aiPlayer = new AIPlayerClass(`models/${modelFile}`, modelType);
             await aiPlayer.load();
 
             if (statusEl) statusEl.className = 'ai-status ready';

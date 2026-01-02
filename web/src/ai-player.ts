@@ -27,7 +27,7 @@ export class AIPlayer {
     private loaded: boolean = false;
     private modelName: string = '';
 
-    constructor(modelPath: string = '/models/ai_model.onnx', modelType: ModelType = 'mlp') {
+    constructor(modelPath: string = 'models/ai_model.onnx', modelType: ModelType = 'mlp') {
         this.modelPath = modelPath;
         this.modelType = modelType;
     }
@@ -56,7 +56,7 @@ export class AIPlayer {
     /**
      * Create an AIPlayer from a ModelInfo object.
      */
-    static fromModelInfo(info: ModelInfo, basePath: string = '/models/'): AIPlayer {
+    static fromModelInfo(info: ModelInfo, basePath: string = 'models/'): AIPlayer {
         const player = new AIPlayer(basePath + info.file, info.type);
         player.modelName = info.name;
         return player;
@@ -237,7 +237,7 @@ export type AIPlayerType = AIPlayer | RandomAIPlayer;
 /**
  * Load model manifest from server.
  */
-export async function loadModelManifest(basePath: string = '/models/'): Promise<ModelInfo[]> {
+export async function loadModelManifest(basePath: string = 'models/'): Promise<ModelInfo[]> {
     try {
         const response = await fetch(basePath + 'manifest.json');
         if (!response.ok) {
