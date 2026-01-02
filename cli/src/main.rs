@@ -9,7 +9,11 @@ use std::io::{self, Read, Write};
 
 #[derive(Parser, Debug)]
 #[command(name = "game-2048-cli")]
-#[command(author, version, about = "Play 2048 in the terminal or run simulations")]
+#[command(
+    author,
+    version,
+    about = "Play 2048 in the terminal or run simulations"
+)]
 struct Args {
     /// Run in interactive mode (default if no other mode specified)
     #[arg(short, long)]
@@ -280,10 +284,10 @@ enum InputAction {
 fn parse_input(bytes: &[u8]) -> InputAction {
     match bytes {
         // Arrow keys (escape sequences)
-        [27, 91, 65] => InputAction::Move(Action::Up),    // Up arrow
-        [27, 91, 66] => InputAction::Move(Action::Down),  // Down arrow
+        [27, 91, 65] => InputAction::Move(Action::Up), // Up arrow
+        [27, 91, 66] => InputAction::Move(Action::Down), // Down arrow
         [27, 91, 67] => InputAction::Move(Action::Right), // Right arrow
-        [27, 91, 68] => InputAction::Move(Action::Left),  // Left arrow
+        [27, 91, 68] => InputAction::Move(Action::Left), // Left arrow
 
         // WASD keys
         [b'w'] | [b'W'] => InputAction::Move(Action::Up),

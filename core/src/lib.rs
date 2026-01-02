@@ -207,8 +207,7 @@ impl Game {
     /// Check if a move in the given direction would change the board.
     fn can_move(&self, action: Action) -> bool {
         let mut test_board = self.board;
-        Self::apply_move_to_board(&mut test_board, action) > 0
-            || test_board != self.board
+        Self::apply_move_to_board(&mut test_board, action) > 0 || test_board != self.board
     }
 
     /// Apply a move to the board and return the reward (merge points).
@@ -224,7 +223,12 @@ impl Game {
             Action::Left => {
                 for row in 0..4 {
                     let start = row * 4;
-                    let mut line = [board[start], board[start + 1], board[start + 2], board[start + 3]];
+                    let mut line = [
+                        board[start],
+                        board[start + 1],
+                        board[start + 2],
+                        board[start + 3],
+                    ];
                     total_reward += Self::compress_and_merge(&mut line);
                     board[start] = line[0];
                     board[start + 1] = line[1];
@@ -235,7 +239,12 @@ impl Game {
             Action::Right => {
                 for row in 0..4 {
                     let start = row * 4;
-                    let mut line = [board[start + 3], board[start + 2], board[start + 1], board[start]];
+                    let mut line = [
+                        board[start + 3],
+                        board[start + 2],
+                        board[start + 1],
+                        board[start],
+                    ];
                     total_reward += Self::compress_and_merge(&mut line);
                     board[start + 3] = line[0];
                     board[start + 2] = line[1];
@@ -426,85 +435,33 @@ mod tests {
 
     #[test]
     fn test_move_left() {
-        let mut board = [
-            2, 2, 0, 0,
-            0, 4, 4, 0,
-            2, 0, 2, 0,
-            8, 8, 8, 8,
-        ];
+        let mut board = [2, 2, 0, 0, 0, 4, 4, 0, 2, 0, 2, 0, 8, 8, 8, 8];
         let reward = Game::apply_move_to_board(&mut board, Action::Left);
-        assert_eq!(
-            board,
-            [
-                4, 0, 0, 0,
-                8, 0, 0, 0,
-                4, 0, 0, 0,
-                16, 16, 0, 0,
-            ]
-        );
+        assert_eq!(board, [4, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 0, 16, 16, 0, 0,]);
         assert_eq!(reward, 4 + 8 + 4 + 32);
     }
 
     #[test]
     fn test_move_right() {
-        let mut board = [
-            2, 2, 0, 0,
-            0, 4, 4, 0,
-            2, 0, 2, 0,
-            8, 8, 8, 8,
-        ];
+        let mut board = [2, 2, 0, 0, 0, 4, 4, 0, 2, 0, 2, 0, 8, 8, 8, 8];
         let reward = Game::apply_move_to_board(&mut board, Action::Right);
-        assert_eq!(
-            board,
-            [
-                0, 0, 0, 4,
-                0, 0, 0, 8,
-                0, 0, 0, 4,
-                0, 0, 16, 16,
-            ]
-        );
+        assert_eq!(board, [0, 0, 0, 4, 0, 0, 0, 8, 0, 0, 0, 4, 0, 0, 16, 16,]);
         assert_eq!(reward, 4 + 8 + 4 + 32);
     }
 
     #[test]
     fn test_move_up() {
-        let mut board = [
-            2, 0, 2, 8,
-            2, 4, 0, 8,
-            0, 4, 2, 8,
-            0, 0, 0, 8,
-        ];
+        let mut board = [2, 0, 2, 8, 2, 4, 0, 8, 0, 4, 2, 8, 0, 0, 0, 8];
         let reward = Game::apply_move_to_board(&mut board, Action::Up);
-        assert_eq!(
-            board,
-            [
-                4, 8, 4, 16,
-                0, 0, 0, 16,
-                0, 0, 0, 0,
-                0, 0, 0, 0,
-            ]
-        );
+        assert_eq!(board, [4, 8, 4, 16, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0,]);
         assert_eq!(reward, 4 + 8 + 4 + 32);
     }
 
     #[test]
     fn test_move_down() {
-        let mut board = [
-            2, 0, 2, 8,
-            2, 4, 0, 8,
-            0, 4, 2, 8,
-            0, 0, 0, 8,
-        ];
+        let mut board = [2, 0, 2, 8, 2, 4, 0, 8, 0, 4, 2, 8, 0, 0, 0, 8];
         let reward = Game::apply_move_to_board(&mut board, Action::Down);
-        assert_eq!(
-            board,
-            [
-                0, 0, 0, 0,
-                0, 0, 0, 0,
-                0, 0, 0, 16,
-                4, 8, 4, 16,
-            ]
-        );
+        assert_eq!(board, [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 4, 8, 4, 16,]);
         assert_eq!(reward, 4 + 8 + 4 + 32);
     }
 
@@ -562,12 +519,7 @@ mod tests {
     fn test_game_over_no_moves() {
         let mut game = Game::new(0);
         // Manually set up a board with no possible moves
-        game.board = [
-            2, 4, 2, 4,
-            4, 2, 4, 2,
-            2, 4, 2, 4,
-            4, 2, 4, 2,
-        ];
+        game.board = [2, 4, 2, 4, 4, 2, 4, 2, 2, 4, 2, 4, 4, 2, 4, 2];
         game.update_done();
         assert!(game.is_done());
         assert_eq!(game.legal_actions(), [false, false, false, false]);
@@ -577,10 +529,8 @@ mod tests {
     fn test_game_not_over_can_merge_horizontal() {
         let mut game = Game::new(0);
         game.board = [
-            2, 2, 4, 8,  // Can merge left or right
-            4, 8, 16, 32,
-            8, 16, 32, 64,
-            16, 32, 64, 128,
+            2, 2, 4, 8, // Can merge left or right
+            4, 8, 16, 32, 8, 16, 32, 64, 16, 32, 64, 128,
         ];
         game.update_done();
         assert!(!game.is_done());
@@ -590,10 +540,8 @@ mod tests {
     fn test_game_not_over_can_merge_vertical() {
         let mut game = Game::new(0);
         game.board = [
-            2, 4, 8, 16,
-            2, 8, 16, 32,  // First column can merge
-            4, 16, 32, 64,
-            8, 32, 64, 128,
+            2, 4, 8, 16, 2, 8, 16, 32, // First column can merge
+            4, 16, 32, 64, 8, 32, 64, 128,
         ];
         game.update_done();
         assert!(!game.is_done());
@@ -615,12 +563,7 @@ mod tests {
     fn test_step_no_change_no_spawn() {
         let mut game = Game::new(0);
         // Set up a board where moving left does nothing
-        game.board = [
-            2, 0, 0, 0,
-            4, 0, 0, 0,
-            8, 0, 0, 0,
-            16, 0, 0, 0,
-        ];
+        game.board = [2, 0, 0, 0, 4, 0, 0, 0, 8, 0, 0, 0, 16, 0, 0, 0];
         let old_board = game.board;
         let result = game.step(Action::Left);
 
