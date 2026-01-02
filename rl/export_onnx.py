@@ -47,7 +47,7 @@ def export_to_onnx(model_path: str, output_path: str, quantize: bool = False) ->
         dummy_input,
         output_path,
         export_params=True,
-        opset_version=11,
+        opset_version=18,  # Updated to 18 for better compatibility
         do_constant_folding=True,
         input_names=['input'],
         output_names=['q_values'],
