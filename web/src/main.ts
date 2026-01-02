@@ -6,9 +6,11 @@
  * - Canvas rendering of the game board
  * - Keyboard input handling
  * - UI updates (score, game over overlay)
+ * - AI player integration
  */
 
 import init, { WasmGame } from './wasm-pkg/game_2048_wasm.js';
+import { AIPlayer, RandomAIPlayer, AIPlayerType, AIAction } from './ai-player';
 
 // =============================================================================
 // Types
@@ -29,6 +31,8 @@ const Action = {
     Left: 2,
     Right: 3,
 } as const;
+
+const ActionNames = ['↑ Up', '↓ Down', '← Left', '→ Right'];
 
 // Tile colors matching the classic 2048 palette
 const TILE_COLORS: Record<number, { bg: string; text: string }> = {
@@ -56,6 +60,11 @@ const SUPER_TILE_COLOR = { bg: '#3c3a32', text: '#f9f6f2' };
 let game: WasmGame | null = null;
 let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
+
+// AI State
+let aiPlayer: AIPlayerType | null = null;
+let aiRunning = false;
+let aiInterval: number | null = null;
 
 // Canvas dimensions
 const CANVAS_SIZE = 400;
@@ -86,11 +95,46 @@ async function main() {
 
     // Setup event listeners
     setupEventListeners();
+
+    // Initialize AI
+    await initializeAI();
+}
+
+async function initializeAI() {
+    const statusEl = document.getElementById('ai-status');
+    const statusText = document.getElementById('ai-status-text');
+    const watchBtn = document.getElementById('watch-ai') as HTMLButtonElement;
+    const hintBtn = document.getElementById('ai-hint') as HTMLButtonElement;
+
+    try {
+        // Try to load the trained model
+        aiPlayer = new AIPlayer('/models/ai_model.onnx');
+        await aiPlayer.load();
+
+        if (statusEl) statusEl.className = 'ai-status ready';
+        if (statusText) statusText.textContent = 'AI ready';
+        if (watchBtn) watchBtn.disabled = false;
+        if (hintBtn) hintBtn.disabled = false;
+    } catch (error) {
+        console.warn('Trained AI model not found, using random player:', error);
+
+        // Fall back to random player
+        aiPlayer = new RandomAIPlayer();
+
+        if (statusEl) statusEl.className = 'ai-status ready';
+        if (statusText) statusText.textContent = 'AI ready (random mode)';
+        if (watchBtn) watchBtn.disabled = false;
+        if (hintBtn) hintBtn.disabled = false;
+    }
 }
 
 function startNewGame(seed: number) {
+    // Stop AI if running
+    stopAI();
+
     game = new WasmGame(BigInt(seed));
     hideGameOver();
+    hideHint();
     updateScore(0);
     render();
 }
@@ -121,9 +165,32 @@ function setupEventListeners() {
             e.preventDefault();
         }
     });
+
+    // AI controls
+    document.getElementById('watch-ai')?.addEventListener('click', startAI);
+    document.getElementById('stop-ai')?.addEventListener('click', stopAI);
+    document.getElementById('ai-hint')?.addEventListener('click', showHint);
+
+    // Speed slider
+    const speedSlider = document.getElementById('ai-speed-slider') as HTMLInputElement;
+    const speedValue = document.getElementById('speed-value');
+    speedSlider?.addEventListener('input', () => {
+        if (speedValue) speedValue.textContent = speedSlider.value;
+
+        // Update AI interval if running
+        if (aiRunning) {
+            stopAI();
+            startAI();
+        }
+    });
 }
 
 function handleKeyDown(e: KeyboardEvent) {
+    // Stop AI when user presses a key
+    if (aiRunning) {
+        stopAI();
+    }
+
     if (!game || game.isDone()) return;
 
     let action: number | null = null;
@@ -152,17 +219,129 @@ function handleKeyDown(e: KeyboardEvent) {
     }
 
     if (action !== null) {
-        const result = game.step(action) as StepResult;
+        performAction(action);
+    }
+}
 
-        if (result.changed) {
-            updateScore(result.score);
-            render();
+function performAction(action: number) {
+    if (!game) return;
 
-            if (result.done) {
-                showGameOver(result.score, getMaxTile(result.board));
-            }
+    const result = game.step(action) as StepResult;
+
+    if (result.changed) {
+        updateScore(result.score);
+        render();
+
+        if (result.done) {
+            stopAI();
+            showGameOver(result.score, getMaxTile(result.board));
         }
     }
+
+    return result;
+}
+
+// =============================================================================
+// AI Controls
+// =============================================================================
+
+function startAI() {
+    if (!game || !aiPlayer || game.isDone()) return;
+
+    aiRunning = true;
+
+    // Update UI
+    const watchBtn = document.getElementById('watch-ai');
+    const stopBtn = document.getElementById('stop-ai');
+    const statusEl = document.getElementById('ai-status');
+    const statusText = document.getElementById('ai-status-text');
+
+    if (watchBtn) watchBtn.classList.add('hidden');
+    if (stopBtn) stopBtn.classList.remove('hidden');
+    if (statusEl) statusEl.className = 'ai-status running';
+    if (statusText) statusText.textContent = 'AI playing...';
+
+    hideHint();
+
+    // Get speed from slider
+    const speedSlider = document.getElementById('ai-speed-slider') as HTMLInputElement;
+    const movesPerSecond = parseInt(speedSlider?.value || '5');
+    const intervalMs = 1000 / movesPerSecond;
+
+    // Start AI loop
+    aiInterval = window.setInterval(async () => {
+        if (!game || !aiPlayer || game.isDone()) {
+            stopAI();
+            return;
+        }
+
+        try {
+            const board = Array.from(game.getBoard());
+            const legalActions = Array.from(game.getLegalActions()).map(v => v === 1);
+
+            let action: AIAction;
+            if (aiPlayer instanceof RandomAIPlayer) {
+                action = aiPlayer.getAction(legalActions);
+            } else {
+                action = await (aiPlayer as AIPlayer).getAction(board, legalActions);
+            }
+
+            performAction(action);
+        } catch (error) {
+            console.error('AI error:', error);
+            stopAI();
+        }
+    }, intervalMs);
+}
+
+function stopAI() {
+    if (aiInterval !== null) {
+        clearInterval(aiInterval);
+        aiInterval = null;
+    }
+
+    aiRunning = false;
+
+    // Update UI
+    const watchBtn = document.getElementById('watch-ai');
+    const stopBtn = document.getElementById('stop-ai');
+    const statusEl = document.getElementById('ai-status');
+    const statusText = document.getElementById('ai-status-text');
+
+    if (watchBtn) watchBtn.classList.remove('hidden');
+    if (stopBtn) stopBtn.classList.add('hidden');
+    if (statusEl) statusEl.className = 'ai-status ready';
+    if (statusText) statusText.textContent = aiPlayer instanceof RandomAIPlayer ? 'AI ready (random mode)' : 'AI ready';
+}
+
+async function showHint() {
+    if (!game || !aiPlayer || game.isDone()) return;
+
+    try {
+        const board = Array.from(game.getBoard());
+        const legalActions = Array.from(game.getLegalActions()).map(v => v === 1);
+
+        let action: AIAction;
+        if (aiPlayer instanceof RandomAIPlayer) {
+            action = aiPlayer.getAction(legalActions);
+        } else {
+            action = await (aiPlayer as AIPlayer).getAction(board, legalActions);
+        }
+
+        // Show hint
+        const hintDisplay = document.getElementById('ai-hint-display');
+        const hintAction = document.getElementById('hint-action');
+
+        if (hintDisplay) hintDisplay.classList.remove('hidden');
+        if (hintAction) hintAction.textContent = ActionNames[action];
+    } catch (error) {
+        console.error('Hint error:', error);
+    }
+}
+
+function hideHint() {
+    const hintDisplay = document.getElementById('ai-hint-display');
+    if (hintDisplay) hintDisplay.classList.add('hidden');
 }
 
 // =============================================================================

@@ -53,6 +53,19 @@ A complete 2048 game implementation featuring:
 │   ├── Cargo.toml
 │   └── src/lib.rs
 │
+├── python/                 # Python bindings (PyO3)
+│   ├── Cargo.toml
+│   ├── pyproject.toml
+│   └── src/lib.rs
+│
+├── rl/                     # Reinforcement learning training
+│   ├── requirements.txt
+│   ├── game_env.py
+│   ├── dqn_agent.py
+│   ├── train.py
+│   ├── evaluate.py
+│   └── export_onnx.py
+│
 ├── web/                    # Static web application
 │   ├── package.json
 │   ├── tsconfig.json
@@ -60,12 +73,43 @@ A complete 2048 game implementation featuring:
 │   ├── index.html
 │   └── src/
 │       ├── main.ts
+│       ├── ai-player.ts   # AI player integration
 │       └── style.css
 │
 └── .github/
     └── workflows/
-        └── ci.yml          # GitHub Actions CI
+        ├── ci.yml          # GitHub Actions CI
+        └── deploy.yml      # GitHub Pages deployment
 ```
+
+## 🤖 AI Player Features
+
+The web app includes an integrated AI player that can:
+- **Watch AI Play**: Let the AI play automatically at adjustable speed
+- **Get Hints**: Ask the AI for the best move suggestion
+- **Random Mode**: Falls back to random moves if no trained model is available
+
+### Training Your Own AI
+
+```bash
+# Setup
+cd rl
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Train (CPU, ~10k episodes)
+python train.py --episodes 10000 --seed 42
+
+# Evaluate
+python evaluate.py --model checkpoints/best_model.pt --episodes 100
+
+# Export for web deployment
+python export_onnx.py --model checkpoints/best_model.pt \
+    --output ../web/public/models/ai_model.onnx
+```
+
+See [rl/README.md](./rl/README.md) for detailed training instructions.
 
 ## 🚀 Quick Start
 
