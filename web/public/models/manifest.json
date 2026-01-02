@@ -1,0 +1,32 @@
+{
+    "models": [
+        {
+            "id": "dqn_10k",
+            "name": "Basic DQN (10k)",
+            "description": "Basic DQN trained for 10,000 episodes. Avg score: ~2000",
+            "file": "dqn_10k.onnx",
+            "type": "mlp"
+        },
+        {
+            "id": "dqn_100k",
+            "name": "Basic DQN (100k)",
+            "description": "Basic DQN trained for 100,000 episodes. Expect ~4000+ avg score",
+            "file": "dqn_100k.onnx",
+            "type": "mlp"
+        },
+        {
+            "id": "dqn_shaped",
+            "name": "Reward Shaped DQN",
+            "description": "DQN with advanced reward shaping (50k episodes). Better corner strategy",
+            "file": "dqn_shaped.onnx",
+            "type": "mlp"
+        },
+        {
+            "id": "dqn_cnn",
+            "name": "CNN DQN",
+            "description": "CNN architecture with reward shaping (50k episodes). Best spatial awareness",
+            "file": "dqn_cnn.onnx",
+            "type": "cnn"
+        }
+    ]
+}

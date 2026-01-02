@@ -309,6 +309,36 @@ footer a:hover {
   color: var(--text-primary);
 }
 
+.ai-model-select {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ai-model-select label {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.ai-model-select select {
+  padding: 8px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.ai-model-select select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
 .ai-controls {
   display: flex;
   gap: 12px;

@@ -105,24 +105,88 @@ async function initializeAI() {
     const statusText = document.getElementById('ai-status-text');
     const watchBtn = document.getElementById('watch-ai') as HTMLButtonElement;
     const hintBtn = document.getElementById('ai-hint') as HTMLButtonElement;
+    const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
 
+    // Load model manifest
     try {
-        // Try to load the trained model
-        aiPlayer = new AIPlayer('/models/ai_model.onnx');
-        await aiPlayer.load();
+        const { loadModelManifest } = await import('./ai-player');
+        const models = await loadModelManifest('/models/');
 
-        if (statusEl) statusEl.className = 'ai-status ready';
-        if (statusText) statusText.textContent = 'AI ready';
-        if (watchBtn) watchBtn.disabled = false;
-        if (hintBtn) hintBtn.disabled = false;
+        // Populate dropdown with available models
+        for (const model of models) {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = model.name;
+            option.dataset.type = model.type;
+            option.dataset.file = model.file;
+            option.dataset.description = model.description;
+            modelSelect.appendChild(option);
+        }
+
+        // Model change handler
+        modelSelect.addEventListener('change', async () => {
+            await loadSelectedModel();
+        });
+
+        // Load first available model or random
+        if (models.length > 0) {
+            modelSelect.value = models[0].id;
+        }
+        await loadSelectedModel();
+
     } catch (error) {
-        console.warn('Trained AI model not found, using random player:', error);
-
-        // Fall back to random player
+        console.error('Failed to initialize AI:', error);
         aiPlayer = new RandomAIPlayer();
-
         if (statusEl) statusEl.className = 'ai-status ready';
         if (statusText) statusText.textContent = 'AI ready (random mode)';
+        if (watchBtn) watchBtn.disabled = false;
+        if (hintBtn) hintBtn.disabled = false;
+    }
+}
+
+async function loadSelectedModel() {
+    const statusEl = document.getElementById('ai-status');
+    const statusText = document.getElementById('ai-status-text');
+    const watchBtn = document.getElementById('watch-ai') as HTMLButtonElement;
+    const hintBtn = document.getElementById('ai-hint') as HTMLButtonElement;
+    const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
+
+    // Stop AI if running
+    stopAI();
+
+    const selectedOption = modelSelect.options[modelSelect.selectedIndex];
+    const modelId = selectedOption.value;
+
+    if (statusEl) statusEl.className = 'ai-status';
+    if (statusText) statusText.textContent = 'Loading model...';
+    if (watchBtn) watchBtn.disabled = true;
+    if (hintBtn) hintBtn.disabled = true;
+
+    try {
+        if (modelId === 'random') {
+            aiPlayer = new RandomAIPlayer();
+            if (statusEl) statusEl.className = 'ai-status ready';
+            if (statusText) statusText.textContent = 'Random player active';
+        } else {
+            const modelType = (selectedOption.dataset.type || 'mlp') as 'mlp' | 'cnn';
+            const modelFile = selectedOption.dataset.file || `${modelId}.onnx`;
+
+            const { AIPlayer: AIPlayerClass } = await import('./ai-player');
+            aiPlayer = new AIPlayerClass(`/models/${modelFile}`, modelType);
+            await aiPlayer.load();
+
+            if (statusEl) statusEl.className = 'ai-status ready';
+            if (statusText) statusText.textContent = `${selectedOption.textContent} ready`;
+        }
+
+        if (watchBtn) watchBtn.disabled = false;
+        if (hintBtn) hintBtn.disabled = false;
+
+    } catch (error) {
+        console.error('Failed to load model:', error);
+        aiPlayer = new RandomAIPlayer();
+        if (statusEl) statusEl.className = 'ai-status error';
+        if (statusText) statusText.textContent = 'Model failed, using random';
         if (watchBtn) watchBtn.disabled = false;
         if (hintBtn) hintBtn.disabled = false;
     }
