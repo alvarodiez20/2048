@@ -97,9 +97,17 @@ class DQNAgent:
         target_update_freq: int = 1000,
         device: str = None
     ):
-        # Device
+        # Device selection: MPS (Apple Silicon) > CUDA (NVIDIA) > CPU
         if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            if torch.backends.mps.is_available():
+                self.device = torch.device("mps")
+                print("🚀 Using Apple Silicon GPU (MPS)")
+            elif torch.cuda.is_available():
+                self.device = torch.device("cuda")
+                print("🚀 Using NVIDIA GPU (CUDA)")
+            else:
+                self.device = torch.device("cpu")
+                print("⚠️  Using CPU (slow)")
         else:
             self.device = torch.device(device)
         
