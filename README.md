@@ -1,5 +1,9 @@
 # 2048 - Rust + WebAssembly
 
+[![CI](https://github.com/alvarodiez20/2048/actions/workflows/ci.yml/badge.svg)](https://github.com/alvarodiez20/2048/actions/workflows/ci.yml)
+
+**[🎮 Play the game online!](https://alvarodiez20.github.io/2048/)**
+
 A complete 2048 game implementation featuring:
 - **Pure Rust core engine** with deterministic, seedable PRNG
 - **Native CLI** for interactive play and headless simulations
