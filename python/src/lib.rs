@@ -3,6 +3,8 @@
 //! This crate provides Python bindings to the 2048 game engine using PyO3.
 //! It exposes a `Game` class that can be used for reinforcement learning training.
 
+#![allow(non_local_definitions)] // PyO3 macros trigger this lint
+
 use game_2048_core::{Action, Game as CoreGame, StepResult};
 use pyo3::prelude::*;
 use pyo3::types::{PyDict, PyModule};
