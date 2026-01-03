@@ -148,12 +148,7 @@ async function initializeAI() {
         rustOption.dataset.description = 'Corner-locked expectimax with bitboards [10-30x faster]';
         modelSelect.appendChild(rustOption);
 
-        // Add JS Expectimax for comparison
-        const expectimaxOption = document.createElement('option');
-        expectimaxOption.value = 'expectimax';
-        expectimaxOption.textContent = 'Expectimax (JavaScript)';
-        expectimaxOption.dataset.description = 'Same strategy in JS for comparison';
-        modelSelect.appendChild(expectimaxOption);
+
 
         // Add trained models from manifest (filter for best ones)
         const desiredModels = ['dqn_shaped', 'dqn_cnn'];
@@ -258,23 +253,14 @@ async function loadSelectedModel() {
 
 function updateModelDescription() {
     const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
-    const descriptionEl = document.getElementById('model-description');
-
-    if (!modelSelect || !descriptionEl) return;
+    if (!modelSelect) return;
 
     const selectedOption = modelSelect.options[modelSelect.selectedIndex];
-    const description = selectedOption.dataset.description;
-
-    const descriptions: Record<string, string> = {
-        'random': '🎲 Picks moves randomly - baseline for comparison',
-        'rust-solver': '⚡ Corner-locked expectimax in Rust [10-30x faster than JS]',
-        'expectimax': '🧠 Same corner-locked strategy in JavaScript',
-        'dqn_shaped': '🎯 Deep Q-Network with reward shaping',
-        'dqn_cnn': '🖼️ Convolutional Neural Network for spatial patterns'
-    };
-
-    const modelId = selectedOption.value;
-    descriptionEl.textContent = description || descriptions[modelId] || 'AI model';
+    if (!selectedOption) return;
+    // Description element removed per user request
+    // const description = selectedOption.dataset.description;
+    // const descriptions: Record<string, string> = { ... };
+    // descriptionEl.textContent = description || descriptions[modelId] || 'AI model';
 }
 
 function startNewGame(seed: number) {

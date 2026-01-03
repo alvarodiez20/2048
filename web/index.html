@@ -62,9 +62,6 @@
           <option value="random">Random (baseline)</option>
         </select>
       </div>
-      <div id="model-description" class="model-description">
-        Select a model to see its description
-      </div>
       <div class="ai-controls">
         <button id="watch-ai" class="btn btn-ai" disabled>
           <span class="btn-icon">▶</span> Watch AI
@@ -111,21 +108,10 @@
             <li><strong>Strategy:</strong> Keeps max tile in top-left corner using snake pattern</li>
             <li><strong>Search:</strong> Expectimax with iterative deepening (depth 2-8)</li>
             <li><strong>Performance:</strong> 10-30x faster than JavaScript version</li>
-            <li><strong>Time Budget:</strong> 100ms per move</li>
-            <li><strong>Expected Max Tile:</strong> 2048-4096</li>
-          </ul>
+
         </div>
 
-        <div class="bot-card">
-          <h4>🧠 Expectimax (JavaScript)</h4>
-          <p>Same corner-locked strategy as the Rust version, implemented in JavaScript for comparison.</p>
-          <ul>
-            <li><strong>Strategy:</strong> Identical to Rust (corner-lock + snake)</li>
-            <li><strong>Performance:</strong> Slower but same quality moves</li>
-            <li><strong>Time Budget:</strong> 400ms per move</li>
-            <li><strong>Use Case:</strong> Compare Rust vs JS performance</li>
-          </ul>
-        </div>
+
 
         <div class="bot-card">
           <h4>🎯 DQN Shaped</h4>
@@ -154,7 +140,8 @@
             lookup tables (65,536 entries) for instant move calculations. The gradient heuristic uses powers of 12 to
             strongly prefer snake-pattern tile arrangements.</p>
           <p><strong>Risk-Averse Search:</strong> At chance nodes, blends average and minimum:
-            <code>(1-α)×avg + α×min</code> where α=0.25, making moves more conservative.</p>
+            <code>(1-α)×avg + α×min</code> where α=0.25, making moves more conservative.
+          </p>
         </div>
       </div>
     </details>
