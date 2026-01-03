@@ -520,6 +520,116 @@ footer a:hover {
   text-align: right;
 }
 
+/* Bot Information Section */
+.bot-info-section {
+  margin-top: 24px;
+  background: var(--bg-card);
+  border-radius: var(--border-radius);
+  padding: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bot-info-section summary {
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  user-select: none;
+  padding: 8px 0;
+  transition: color 0.2s;
+}
+
+.bot-info-section summary:hover {
+  color: var(--accent);
+}
+
+.bot-info-content {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bot-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-left: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.bot-card.highlight {
+  background: rgba(233, 69, 96, 0.05);
+  border-left: 3px solid var(--accent);
+}
+
+.bot-card h4 {
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.bot-card p {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.bot-card ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.bot-card li {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 4px 0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.bot-card li:before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.bot-card strong {
+  color: var(--text-primary);
+}
+
+.implementation-notes {
+  background: rgba(59, 130, 246, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  border-left: 3px solid #3b82f6;
+}
+
+.implementation-notes h4 {
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.implementation-notes p {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.implementation-notes code {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  color: #10b981;
+  font-size: 0.9em;
+}
+
 .hidden {
   display: none !important;
 }

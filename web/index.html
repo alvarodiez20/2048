@@ -90,6 +90,75 @@
       </div>
     </div>
 
+    <details class="bot-info-section">
+      <summary>📚 About the AI Bots</summary>
+      <div class="bot-info-content">
+        <div class="bot-card">
+          <h4>🎲 Random (Baseline)</h4>
+          <p>Picks moves randomly from available legal directions. Used as a baseline to compare other strategies.</p>
+          <ul>
+            <li><strong>Average Score:</strong> ~1,000-2,000</li>
+            <li><strong>Max Tile:</strong> Usually 128-256</li>
+            <li><strong>Speed:</strong> Instant</li>
+          </ul>
+        </div>
+
+        <div class="bot-card highlight">
+          <h4>⚡ Expectimax (Rust) - RECOMMENDED</h4>
+          <p><strong>Corner-locked expectimax with bitboards.</strong> Uses pre-computed lookup tables for O(1) move
+            operations and searches the game tree to maximize expected value.</p>
+          <ul>
+            <li><strong>Strategy:</strong> Keeps max tile in top-left corner using snake pattern</li>
+            <li><strong>Search:</strong> Expectimax with iterative deepening (depth 2-8)</li>
+            <li><strong>Performance:</strong> 10-30x faster than JavaScript version</li>
+            <li><strong>Time Budget:</strong> 100ms per move</li>
+            <li><strong>Expected Max Tile:</strong> 2048-4096</li>
+          </ul>
+        </div>
+
+        <div class="bot-card">
+          <h4>🧠 Expectimax (JavaScript)</h4>
+          <p>Same corner-locked strategy as the Rust version, implemented in JavaScript for comparison.</p>
+          <ul>
+            <li><strong>Strategy:</strong> Identical to Rust (corner-lock + snake)</li>
+            <li><strong>Performance:</strong> Slower but same quality moves</li>
+            <li><strong>Time Budget:</strong> 400ms per move</li>
+            <li><strong>Use Case:</strong> Compare Rust vs JS performance</li>
+          </ul>
+        </div>
+
+        <div class="bot-card">
+          <h4>🎯 DQN Shaped</h4>
+          <p>Deep Q-Network trained with reward shaping to encourage good behaviors (empty tiles, high tiles, corner
+            positioning).</p>
+          <ul>
+            <li><strong>Training:</strong> 50,000 episodes via reinforcement learning</li>
+            <li><strong>Architecture:</strong> MLP (256→128 hidden units)</li>
+            <li><strong>Framework:</strong> PyTorch on Apple M4 GPU</li>
+          </ul>
+        </div>
+
+        <div class="bot-card">
+          <h4>🖼️ CNN DQN</h4>
+          <p>Convolutional Neural Network that learns spatial patterns on the 4×4 board.</p>
+          <ul>
+            <li><strong>Training:</strong> 25,000 episodes (in progress)</li>
+            <li><strong>Architecture:</strong> 2 conv layers (64 channels) + FC (128 units)</li>
+            <li><strong>Advantage:</strong> Learns position-aware features automatically</li>
+          </ul>
+        </div>
+
+        <div class="implementation-notes">
+          <h4>🔧 Implementation Details</h4>
+          <p><strong>Expectimax Rust:</strong> Uses bitboard representation (u64 with 4 bits per tile) and pre-computed
+            lookup tables (65,536 entries) for instant move calculations. The gradient heuristic uses powers of 12 to
+            strongly prefer snake-pattern tile arrangements.</p>
+          <p><strong>Risk-Averse Search:</strong> At chance nodes, blends average and minimum:
+            <code>(1-α)×avg + α×min</code> where α=0.25, making moves more conservative.</p>
+        </div>
+      </div>
+    </details>
+
     <footer>
       <p>Rust + WebAssembly | <a href="https://github.com/alvarodiez20/2048" target="_blank">GitHub</a></p>
     </footer>

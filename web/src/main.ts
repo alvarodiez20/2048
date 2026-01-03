@@ -141,18 +141,18 @@ async function initializeAI() {
         const { loadModelManifest } = await import('./ai-player');
         const models = await loadModelManifest('models/');
 
-        // Add Rust Solver (best performance)
+        // Add Rust Expectimax (best performance)
         const rustOption = document.createElement('option');
         rustOption.value = 'rust-solver';
-        rustOption.textContent = 'Rust Solver (Bitboard)';
-        rustOption.dataset.description = 'High-performance expectimax with bitboards [FASTEST]';
+        rustOption.textContent = 'Expectimax (Rust)';
+        rustOption.dataset.description = 'Corner-locked expectimax with bitboards [10-30x faster]';
         modelSelect.appendChild(rustOption);
 
-        // Add Expectimax bot
+        // Add JS Expectimax for comparison
         const expectimaxOption = document.createElement('option');
         expectimaxOption.value = 'expectimax';
-        expectimaxOption.textContent = 'Expectimax (Corner-Lock)';
-        expectimaxOption.dataset.description = 'Corner-locked strategy with risk-averse search';
+        expectimaxOption.textContent = 'Expectimax (JavaScript)';
+        expectimaxOption.dataset.description = 'Same strategy in JS for comparison';
         modelSelect.appendChild(expectimaxOption);
 
         // Add trained models from manifest (filter for best ones)
@@ -266,11 +266,11 @@ function updateModelDescription() {
     const description = selectedOption.dataset.description;
 
     const descriptions: Record<string, string> = {
-        'random': '🎲 Simple baseline that picks moves randomly',
-        'rust-solver': '⚡ High-performance expectimax using bitboards [FASTEST]',
-        'expectimax': '🧠 Corner-locked strategy with risk-averse search',
-        'dqn_shaped': '🎯 Deep Q-Network with reward shaping (trained on RL)',
-        'dqn_cnn': '🖼️ Convolutional Neural Network trained via Deep RL'
+        'random': '🎲 Picks moves randomly - baseline for comparison',
+        'rust-solver': '⚡ Corner-locked expectimax in Rust [10-30x faster than JS]',
+        'expectimax': '🧠 Same corner-locked strategy in JavaScript',
+        'dqn_shaped': '🎯 Deep Q-Network with reward shaping',
+        'dqn_cnn': '🖼️ Convolutional Neural Network for spatial patterns'
     };
 
     const modelId = selectedOption.value;
