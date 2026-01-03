@@ -43,22 +43,22 @@ impl Action {
 
 /// Snake gradient weights (powers of 12 for strong preference)
 const GRADIENT_POWERS: [f64; 16] = [
-    68719476736.0,    // 12^15
-    5726623061.0,     // 12^14
-    477218588.0,      // 12^13
-    39764832.0,       // 12^12
-    429981696.0,      // 12^8
-    5159780352.0,     // 12^9
-    61917364224.0,    // 12^10
-    743008370688.0,   // 12^11
-    35831808.0,       // 12^7
-    2985984.0,        // 12^6
-    248832.0,         // 12^5
-    20736.0,          // 12^4
-    1.0,              // 12^0
-    12.0,             // 12^1
-    144.0,            // 12^2
-    1728.0,           // 12^3
+    68719476736.0,  // 12^15
+    5726623061.0,   // 12^14
+    477218588.0,    // 12^13
+    39764832.0,     // 12^12
+    429981696.0,    // 12^8
+    5159780352.0,   // 12^9
+    61917364224.0,  // 12^10
+    743008370688.0, // 12^11
+    35831808.0,     // 12^7
+    2985984.0,      // 12^6
+    248832.0,       // 12^5
+    20736.0,        // 12^4
+    1.0,            // 12^0
+    12.0,           // 12^1
+    144.0,          // 12^2
+    1728.0,         // 12^3
 ];
 
 // =============================================================================
@@ -83,25 +83,30 @@ pub fn init_tables() {
 
         for row in 0..65536u32 {
             let row_u16 = row as u16;
-            
+
             // Extract tiles
             let mut tiles = [0u8; 4];
             for i in 0..4 {
                 tiles[i] = ((row_u16 >> (i * 4)) & 0xF) as u8;
             }
-            
+
             // Move left
             let (left_tiles, left_score) = compress_and_merge(&tiles);
             MOVE_LEFT_TABLE[row as usize] = pack_tiles(&left_tiles);
             ROW_SCORE_TABLE[row as usize] = left_score;
-            
+
             // Move right (reverse, move left, reverse)
             let reversed = [tiles[3], tiles[2], tiles[1], tiles[0]];
             let (right_tiles, _) = compress_and_merge(&reversed);
-            let right_result = [right_tiles[3], right_tiles[2], right_tiles[1], right_tiles[0]];
+            let right_result = [
+                right_tiles[3],
+                right_tiles[2],
+                right_tiles[1],
+                right_tiles[0],
+            ];
             MOVE_RIGHT_TABLE[row as usize] = pack_tiles(&right_result);
         }
-        
+
         TABLES_INITIALIZED = true;
     }
 }
@@ -111,7 +116,7 @@ fn compress_and_merge(tiles: &[u8; 4]) -> ([u8; 4], u16) {
     let mut result = [0u8; 4];
     let mut score = 0u16;
     let mut write_idx = 0;
-    
+
     // First pass: compress (remove zeros)
     let mut temp = [0u8; 4];
     let mut temp_len = 0;
@@ -121,7 +126,7 @@ fn compress_and_merge(tiles: &[u8; 4]) -> ([u8; 4], u16) {
             temp_len += 1;
         }
     }
-    
+
     // Second pass: merge
     let mut i = 0;
     while i < temp_len {
@@ -139,7 +144,7 @@ fn compress_and_merge(tiles: &[u8; 4]) -> ([u8; 4], u16) {
             i += 1;
         }
     }
-    
+
     (result, score)
 }
 
@@ -197,6 +202,9 @@ fn set_tile(board: Board, row: usize, col: usize, value: u8) -> Board {
 
 /// Apply a move to the board
 pub fn apply_move(board: Board, action: Action) -> (Board, u32) {
+    // Ensure tables are initialized before use
+    init_tables();
+    
     unsafe {
         match action {
             Action::Left => {
@@ -324,7 +332,7 @@ fn max_tile_in_corner(board: Board) -> bool {
     if corner_tile == 0 {
         return false;
     }
-    
+
     for i in 1..16 {
         let tile = (board >> (i * 4)) & 0xF;
         if tile > corner_tile {
@@ -337,18 +345,18 @@ fn max_tile_in_corner(board: Board) -> bool {
 /// Evaluate with 8-way symmetry
 fn evaluate(board: Board) -> f64 {
     let mut best_score = f64::MIN;
-    
+
     for sym in 0..8 {
         let transformed = apply_symmetry(board, sym);
         let score = evaluate_with_gradient(transformed);
         best_score = best_score.max(score);
     }
-    
+
     // Corner penalty
     if !max_tile_in_corner(board) {
         best_score *= 0.2;
     }
-    
+
     best_score
 }
 
@@ -370,7 +378,7 @@ impl Solver {
             start_time: Instant::now(),
         }
     }
-    
+
     fn expectimax(
         &mut self,
         board: Board,
@@ -379,74 +387,78 @@ impl Solver {
         time_limit: Duration,
     ) -> f64 {
         self.nodes_searched += 1;
-        
+
         // Time check
         if self.start_time.elapsed() > time_limit {
             return evaluate(board);
         }
-        
+
         // Base case
         if depth == 0 {
             return evaluate(board);
         }
-        
+
         // Transposition table lookup
         if let Some(&cached) = self.transposition_table.get(&board) {
             return cached;
         }
-        
+
         let score = if is_max_node {
             self.max_node(board, depth, time_limit)
         } else {
             self.chance_node(board, depth, time_limit)
         };
-        
+
         // Cache (limit size to avoid memory bloat)
         if self.transposition_table.len() < 100_000 {
             self.transposition_table.insert(board, score);
         }
-        
+
         score
     }
-    
+
     fn max_node(&mut self, board: Board, depth: usize, time_limit: Duration) -> f64 {
         let mut best = f64::MIN;
         let mut has_move = false;
-        
+
         for action in [Action::Up, Action::Down, Action::Left, Action::Right] {
             let (new_board, move_score) = apply_move(board, action);
             if new_board == board {
                 continue; // No change
             }
             has_move = true;
-            
-            let eval = self.expectimax(new_board, depth - 1, false, time_limit)
-                + move_score as f64 * 0.1;
-            
+
+            let eval =
+                self.expectimax(new_board, depth - 1, false, time_limit) + move_score as f64 * 0.1;
+
             best = best.max(eval);
         }
-        
-        if has_move { best } else { evaluate(board) }
+
+        if has_move {
+            best
+        } else {
+            evaluate(board)
+        }
     }
-    
+
     fn chance_node(&mut self, board: Board, depth: usize, time_limit: Duration) -> f64 {
         let empties = get_empty_positions(board);
         if empties.is_empty() {
             return evaluate(board);
         }
-        
+
         let mut total = 0.0;
-        
+
         for &pos in &empties {
             // Spawn 2 (90%)
             let board_with_2 = board | (1u64 << (pos * 4));
             total += 0.9 * self.expectimax(board_with_2, depth - 1, true, time_limit);
-            
+
             // Spawn 4 (10%)
             let board_with_4 = board | (2u64 << (pos * 4));
             total += 0.1 * self.expectimax(board_with_4, depth - 1, true, time_limit);
         }
-        
+
         total / empties.len() as f64
     }
 }
@@ -459,39 +471,39 @@ impl Solver {
 pub fn find_best_move(board: Board, time_limit_ms: u64) -> Action {
     let time_limit = Duration::from_millis(time_limit_ms);
     let mut best_action = Action::Left;
-    
+
     // Ensure tables are initialized
     init_tables();
-    
+
     // Iterative deepening: 2, 4, 6, 8, ...
     for depth in (2..=12).step_by(2) {
         let mut solver = Solver::new();
-        
+
         if solver.start_time.elapsed() > time_limit * 80 / 100 {
             break;
         }
-        
+
         let mut depth_best = Action::Left;
         let mut depth_best_score = f64::MIN;
-        
+
         for action in [Action::Up, Action::Down, Action::Left, Action::Right] {
             let (new_board, score) = apply_move(board, action);
             if new_board == board {
                 continue;
             }
-            
-            let eval = solver.expectimax(new_board, depth - 1, false, time_limit)
-                + score as f64 * 0.1;
-            
+
+            let eval =
+                solver.expectimax(new_board, depth - 1, false, time_limit) + score as f64 * 0.1;
+
             if eval > depth_best_score {
                 depth_best_score = eval;
                 depth_best = action;
             }
         }
-        
+
         best_action = depth_best;
     }
-    
+
     best_action
 }
 
@@ -524,7 +536,7 @@ pub fn unpack_board_to_tiles(board: Board) -> Vec<u32> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_tables_init() {
         init_tables();
@@ -532,15 +544,17 @@ mod tests {
             assert!(TABLES_INITIALIZED);
         }
     }
-    
+
     #[test]
     fn test_pack_unpack() {
-        let tiles = vec![2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0, 0, 0];
+        let tiles = vec![
+            2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0, 0, 0,
+        ];
         let board = pack_board_from_tiles(&tiles);
         let unpacked = unpack_board_to_tiles(board);
         assert_eq!(tiles, unpacked);
     }
-    
+
     #[test]
     fn test_move_left() {
         init_tables();

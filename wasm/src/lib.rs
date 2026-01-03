@@ -146,13 +146,13 @@ pub fn init() {
 #[wasm_bindgen(js_name = solveBoard)]
 pub fn solve_board(board_js: Vec<u32>, time_limit_ms: u64) -> u8 {
     use game_2048_core::solver::{find_best_move, pack_board_from_tiles};
-    
+
     // Convert JS board to bitboard
     let board = pack_board_from_tiles(&board_js);
-    
+
     // Run solver
     let best_move = find_best_move(board, time_limit_ms);
-    
+
     // Return action as u8
     best_move as u8
 }
@@ -161,12 +161,14 @@ pub fn solve_board(board_js: Vec<u32>, time_limit_ms: u64) -> u8 {
 #[wasm_bindgen(js_name = testSolver)]
 pub fn test_solver() -> String {
     use game_2048_core::solver::{init_tables, pack_board_from_tiles, unpack_board_to_tiles};
-    
+
     init_tables();
-    
-    let tiles = vec![2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0, 0, 0];
+
+    let tiles = vec![
+        2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0, 0, 0,
+    ];
     let board = pack_board_from_tiles(&tiles);
     let unpacked = unpack_board_to_tiles(board);
-    
+
     format!("Solver ready! Test board: {:?}", unpacked)
 }
