@@ -17,6 +17,8 @@
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
+pub mod solver;
+
 /// The four possible move directions in 2048.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]

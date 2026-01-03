@@ -12,6 +12,7 @@
 import init, { WasmGame } from './wasm-pkg/game_2048_wasm.js';
 import { AIPlayer, RandomAIPlayer, AIPlayerType, AIAction } from './ai-player';
 import { ExpectimaxBot } from './expectimax-bot';
+import { RustSolverBot } from './rust-solver-bot';
 
 // =============================================================================
 // Types
@@ -63,10 +64,11 @@ let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 
 // AI State
-let aiPlayer: AIPlayerType | ExpectimaxBot | null = null;
+let aiPlayer: AIPlayerType | ExpectimaxBot | RustSolverBot | null = null;
 let aiRunning = false;
 let aiInterval: number | null = null;
 let expectimaxBot: ExpectimaxBot | null = null;
+let rustBot: RustSolverBot | null = null;
 
 // Canvas dimensions
 let CANVAS_SIZE = 400;
@@ -139,15 +141,23 @@ async function initializeAI() {
         const { loadModelManifest } = await import('./ai-player');
         const models = await loadModelManifest('models/');
 
-        // Add Expectimax bot option first
+        // Add Rust Solver (best performance)
+        const rustOption = document.createElement('option');
+        rustOption.value = 'rust-solver';
+        rustOption.textContent = 'Rust Solver (Bitboard)';
+        rustOption.dataset.description = 'High-performance expectimax with bitboards [FASTEST]';
+        modelSelect.appendChild(rustOption);
+
+        // Add Expectimax bot
         const expectimaxOption = document.createElement('option');
         expectimaxOption.value = 'expectimax';
         expectimaxOption.textContent = 'Expectimax (Corner-Lock)';
-        expectimaxOption.dataset.type = 'expectimax';
+        expectimaxOption.dataset.description = 'Corner-locked strategy with risk-averse search';
         modelSelect.appendChild(expectimaxOption);
 
-        // Populate dropdown with available models
-        for (const model of models) {
+        // Add trained models from manifest (filter for best ones)
+        const desiredModels = ['dqn_shaped', 'dqn_cnn'];
+        for (const model of models.filter(m => desiredModels.includes(m.id))) {
             const option = document.createElement('option');
             option.value = model.id;
             option.textContent = model.name;
@@ -160,7 +170,11 @@ async function initializeAI() {
         // Model change handler
         modelSelect.addEventListener('change', async () => {
             await loadSelectedModel();
+            updateModelDescription();
         });
+
+        // Initial description update
+        updateModelDescription();
 
         // Load first available model or random
         if (models.length > 0) {
@@ -200,15 +214,21 @@ async function loadSelectedModel() {
         if (modelId === 'random') {
             aiPlayer = new RandomAIPlayer();
             expectimaxBot = null;
+            rustBot = null;
             if (statusEl) statusEl.className = 'ai-status ready';
-            if (statusText) statusText.textContent = 'Random player active';
-            hideBotStats();
+            if (statusText) statusText.textContent = 'Random baseline';
+        } else if (modelId === 'rust-solver') {
+            rustBot = new RustSolverBot(100); // 100ms time limit
+            aiPlayer = rustBot;
+            expectimaxBot = null;
+            if (statusEl) statusEl.className = 'ai-status ready';
+            if (statusText) statusText.textContent = 'Rust Solver ready';
         } else if (modelId === 'expectimax') {
             expectimaxBot = new ExpectimaxBot();
             aiPlayer = expectimaxBot;
+            rustBot = null;
             if (statusEl) statusEl.className = 'ai-status ready';
-            if (statusText) statusText.textContent = 'Expectimax (Corner-Lock) ready';
-            showBotStats();
+            if (statusText) statusText.textContent = 'Expectimax ready';
         } else {
             const modelType = (selectedOption.dataset.type || 'mlp') as 'mlp' | 'cnn';
             const modelFile = selectedOption.dataset.file || `${modelId}.onnx`;
@@ -217,10 +237,10 @@ async function loadSelectedModel() {
             aiPlayer = new AIPlayerClass(`models/${modelFile}`, modelType);
             await aiPlayer.load();
             expectimaxBot = null;
+            rustBot = null;
 
             if (statusEl) statusEl.className = 'ai-status ready';
             if (statusText) statusText.textContent = `${selectedOption.textContent} ready`;
-            hideBotStats();
         }
 
         if (watchBtn) watchBtn.disabled = false;
@@ -234,6 +254,27 @@ async function loadSelectedModel() {
         if (watchBtn) watchBtn.disabled = false;
         if (hintBtn) hintBtn.disabled = false;
     }
+}
+
+function updateModelDescription() {
+    const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
+    const descriptionEl = document.getElementById('model-description');
+
+    if (!modelSelect || !descriptionEl) return;
+
+    const selectedOption = modelSelect.options[modelSelect.selectedIndex];
+    const description = selectedOption.dataset.description;
+
+    const descriptions: Record<string, string> = {
+        'random': '🎲 Simple baseline that picks moves randomly',
+        'rust-solver': '⚡ High-performance expectimax using bitboards [FASTEST]',
+        'expectimax': '🧠 Corner-locked strategy with risk-averse search',
+        'dqn_shaped': '🎯 Deep Q-Network with reward shaping (trained on RL)',
+        'dqn_cnn': '🖼️ Convolutional Neural Network trained via Deep RL'
+    };
+
+    const modelId = selectedOption.value;
+    descriptionEl.textContent = description || descriptions[modelId] || 'AI model';
 }
 
 function startNewGame(seed: number) {
@@ -515,7 +556,6 @@ function startAI() {
                 const board = Array.from(game.getBoard());
                 const maxTile = Math.max(...board);
                 expectimaxBot.recordGameEnd(game.getScore(), maxTile);
-                updateBotStats();
             }
             stopAI();
             return;
@@ -528,6 +568,8 @@ function startAI() {
             let action: AIAction;
             if (aiPlayer instanceof RandomAIPlayer) {
                 action = aiPlayer.getAction(legalActions);
+            } else if (rustBot && aiPlayer === rustBot) {
+                action = rustBot.getAction(board, legalActions) as AIAction;
             } else if (expectimaxBot && aiPlayer === expectimaxBot) {
                 action = expectimaxBot.getAction(board, legalActions) as AIAction;
             } else {
@@ -702,41 +744,8 @@ function getMaxTile(board: number[]): number {
 }
 
 // =============================================================================
-// Bot Stats (for Expectimax)
-// =============================================================================
-
-function showBotStats() {
-    const statsEl = document.getElementById('bot-stats');
-    if (statsEl) statsEl.classList.remove('hidden');
-}
-
-function hideBotStats() {
-    const statsEl = document.getElementById('bot-stats');
-    if (statsEl) statsEl.classList.add('hidden');
-}
-
-function updateBotStats() {
-    if (!expectimaxBot) return;
-
-    const stats = expectimaxBot.getStats();
-
-    const setStatText = (id: string, value: string | number) => {
-        const el = document.getElementById(id);
-        if (el) el.textContent = value.toString();
-    };
-
-    setStatText('stat-games', stats.gamesPlayed);
-    setStatText('stat-max-tile', stats.maxTileReached || '-');
-    setStatText('stat-avg-score', stats.gamesPlayed > 0
-        ? Math.round(stats.totalScore / stats.gamesPlayed)
-        : 0);
-    setStatText('stat-512', stats.reached512);
-    setStatText('stat-1024', stats.reached1024);
-    setStatText('stat-2048', stats.reached2048);
-}
-
-// =============================================================================
 // Start the game
 // =============================================================================
 
 main().catch(console.error);
+

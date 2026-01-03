@@ -19,7 +19,6 @@
   <div id="app">
     <header>
       <h1>2048</h1>
-      <p class="subtitle">Rust + WebAssembly Edition</p>
     </header>
 
     <div class="game-header">
@@ -58,10 +57,13 @@
     <div class="ai-section">
       <h3>🤖 AI Player</h3>
       <div class="ai-model-select">
-        <label for="model-select">Model:</label>
+        <label for="model-select">AI Model:</label>
         <select id="model-select">
           <option value="random">Random (baseline)</option>
         </select>
+      </div>
+      <div id="model-description" class="model-description">
+        Select a model to see its description
       </div>
       <div class="ai-controls">
         <button id="watch-ai" class="btn btn-ai" disabled>
@@ -86,22 +88,10 @@
       <div id="ai-hint-display" class="ai-hint hidden">
         Best move: <span id="hint-action">-</span>
       </div>
-      <div id="bot-stats" class="bot-stats hidden">
-        <h4>📊 Bot Statistics</h4>
-        <div class="stats-grid">
-          <span>Games:</span><span id="stat-games">0</span>
-          <span>Max Tile:</span><span id="stat-max-tile">-</span>
-          <span>Avg Score:</span><span id="stat-avg-score">0</span>
-          <span>512+:</span><span id="stat-512">0</span>
-          <span>1024+:</span><span id="stat-1024">0</span>
-          <span>2048+:</span><span id="stat-2048">0</span>
-        </div>
-      </div>
     </div>
 
     <footer>
-      <p>Built with <a href="https://www.rust-lang.org/" target="_blank">Rust</a> + <a href="https://webassembly.org/"
-          target="_blank">WebAssembly</a></p>
+      <p>Rust + WebAssembly | <a href="https://github.com/alvarodiez20/2048" target="_blank">GitHub</a></p>
     </footer>
   </div>
 
