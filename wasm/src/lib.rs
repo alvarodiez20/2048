@@ -127,6 +127,7 @@ impl WasmGame {
 /// Initialize panic hook for better error messages in the browser console.
 #[wasm_bindgen(start)]
 pub fn init() {
+    console_error_panic_hook::set_once();
     // Initialize solver lookup tables
     game_2048_core::solver::init_tables();
 }

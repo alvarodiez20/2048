@@ -9,7 +9,7 @@
 //! - Iterative deepening with time budget
 
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use instant::{Duration, Instant};
 
 // =============================================================================
 // Types and Constants

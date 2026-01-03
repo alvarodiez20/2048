@@ -176,10 +176,8 @@ async function initializeAI() {
         // Initial description update
         updateModelDescription();
 
-        // Load first available model or random
-        if (models.length > 0) {
-            modelSelect.value = models[0].id;
-        }
+        // Default to random baseline
+        modelSelect.value = 'random';
         await loadSelectedModel();
 
     } catch (error) {
@@ -203,6 +201,8 @@ async function loadSelectedModel() {
     stopAI();
 
     const selectedOption = modelSelect.options[modelSelect.selectedIndex];
+    if (!selectedOption) return;
+
     const modelId = selectedOption.value;
 
     if (statusEl) statusEl.className = 'ai-status';

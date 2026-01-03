@@ -7,6 +7,7 @@ description = "Pure Rust 2048 game engine with deterministic, seedable PRNG"
 
 [dependencies]
 rand = { version = "0.8", default-features = false, features = ["small_rng"] }
+instant = { version = "0.1", features = [ "wasm-bindgen" ] }
 
 [dev-dependencies]
 # For property-based testing (optional)
