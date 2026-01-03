@@ -11,6 +11,7 @@
 
 import init, { WasmGame } from './wasm-pkg/game_2048_wasm.js';
 import { AIPlayer, RandomAIPlayer, AIPlayerType, AIAction } from './ai-player';
+import { ExpectimaxBot } from './expectimax-bot';
 
 // =============================================================================
 // Types
@@ -62,9 +63,10 @@ let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 
 // AI State
-let aiPlayer: AIPlayerType | null = null;
+let aiPlayer: AIPlayerType | ExpectimaxBot | null = null;
 let aiRunning = false;
 let aiInterval: number | null = null;
+let expectimaxBot: ExpectimaxBot | null = null;
 
 // Canvas dimensions
 let CANVAS_SIZE = 400;
@@ -137,6 +139,13 @@ async function initializeAI() {
         const { loadModelManifest } = await import('./ai-player');
         const models = await loadModelManifest('models/');
 
+        // Add Expectimax bot option first
+        const expectimaxOption = document.createElement('option');
+        expectimaxOption.value = 'expectimax';
+        expectimaxOption.textContent = 'Expectimax (Corner-Lock)';
+        expectimaxOption.dataset.type = 'expectimax';
+        modelSelect.appendChild(expectimaxOption);
+
         // Populate dropdown with available models
         for (const model of models) {
             const option = document.createElement('option');
@@ -190,8 +199,16 @@ async function loadSelectedModel() {
     try {
         if (modelId === 'random') {
             aiPlayer = new RandomAIPlayer();
+            expectimaxBot = null;
             if (statusEl) statusEl.className = 'ai-status ready';
             if (statusText) statusText.textContent = 'Random player active';
+            hideBotStats();
+        } else if (modelId === 'expectimax') {
+            expectimaxBot = new ExpectimaxBot();
+            aiPlayer = expectimaxBot;
+            if (statusEl) statusEl.className = 'ai-status ready';
+            if (statusText) statusText.textContent = 'Expectimax (Corner-Lock) ready';
+            showBotStats();
         } else {
             const modelType = (selectedOption.dataset.type || 'mlp') as 'mlp' | 'cnn';
             const modelFile = selectedOption.dataset.file || `${modelId}.onnx`;
@@ -199,9 +216,11 @@ async function loadSelectedModel() {
             const { AIPlayer: AIPlayerClass } = await import('./ai-player');
             aiPlayer = new AIPlayerClass(`models/${modelFile}`, modelType);
             await aiPlayer.load();
+            expectimaxBot = null;
 
             if (statusEl) statusEl.className = 'ai-status ready';
             if (statusText) statusText.textContent = `${selectedOption.textContent} ready`;
+            hideBotStats();
         }
 
         if (watchBtn) watchBtn.disabled = false;
@@ -485,7 +504,19 @@ function startAI() {
 
     // Start AI loop
     aiInterval = window.setInterval(async () => {
-        if (!game || !aiPlayer || game.isDone()) {
+        if (!game || !aiPlayer) {
+            stopAI();
+            return;
+        }
+
+        if (game.isDone()) {
+            // Record stats for expectimax bot
+            if (expectimaxBot) {
+                const board = Array.from(game.getBoard());
+                const maxTile = Math.max(...board);
+                expectimaxBot.recordGameEnd(game.getScore(), maxTile);
+                updateBotStats();
+            }
             stopAI();
             return;
         }
@@ -497,6 +528,8 @@ function startAI() {
             let action: AIAction;
             if (aiPlayer instanceof RandomAIPlayer) {
                 action = aiPlayer.getAction(legalActions);
+            } else if (expectimaxBot && aiPlayer === expectimaxBot) {
+                action = expectimaxBot.getAction(board, legalActions) as AIAction;
             } else {
                 action = await (aiPlayer as AIPlayer).getAction(board, legalActions);
             }
@@ -666,6 +699,40 @@ function hideGameOver() {
 
 function getMaxTile(board: number[]): number {
     return Math.max(...board);
+}
+
+// =============================================================================
+// Bot Stats (for Expectimax)
+// =============================================================================
+
+function showBotStats() {
+    const statsEl = document.getElementById('bot-stats');
+    if (statsEl) statsEl.classList.remove('hidden');
+}
+
+function hideBotStats() {
+    const statsEl = document.getElementById('bot-stats');
+    if (statsEl) statsEl.classList.add('hidden');
+}
+
+function updateBotStats() {
+    if (!expectimaxBot) return;
+
+    const stats = expectimaxBot.getStats();
+
+    const setStatText = (id: string, value: string | number) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value.toString();
+    };
+
+    setStatText('stat-games', stats.gamesPlayed);
+    setStatText('stat-max-tile', stats.maxTileReached || '-');
+    setStatText('stat-avg-score', stats.gamesPlayed > 0
+        ? Math.round(stats.totalScore / stats.gamesPlayed)
+        : 0);
+    setStatText('stat-512', stats.reached512);
+    setStatText('stat-1024', stats.reached1024);
+    setStatText('stat-2048', stats.reached2048);
 }
 
 // =============================================================================

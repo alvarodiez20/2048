@@ -69,14 +69,13 @@ class DQN_CNN(nn.Module):
     def __init__(self):
         super().__init__()
         
-        # Convolutional layers
-        self.conv1 = nn.Conv2d(16, 128, kernel_size=2, padding=0)  # 4x4 -> 3x3
-        self.conv2 = nn.Conv2d(128, 128, kernel_size=2, padding=0)  # 3x3 -> 2x2
-        self.conv3 = nn.Conv2d(128, 128, kernel_size=2, padding=0)  # 2x2 -> 1x1
+        # Lighter convolutional layers (reduced from 128 to 64 channels)
+        self.conv1 = nn.Conv2d(16, 64, kernel_size=2, padding=0)  # 4x4 -> 3x3
+        self.conv2 = nn.Conv2d(64, 64, kernel_size=2, padding=0)  # 3x3 -> 2x2
         
-        # Fully connected layers
-        self.fc1 = nn.Linear(128, 256)
-        self.fc2 = nn.Linear(256, 4)
+        # Simpler fully connected layers
+        self.fc1 = nn.Linear(64 * 2 * 2, 128)  # Reduced from 256
+        self.fc2 = nn.Linear(128, 4)
         
         self._init_weights()
     
@@ -89,10 +88,9 @@ class DQN_CNN(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x shape: (batch, 16, 4, 4)
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
-        x = F.relu(self.conv3(x))
-        x = x.view(x.size(0), -1)  # Flatten to (batch, 128)
+        x = F.relu(self.conv1(x))  # -> (batch, 64, 3, 3)
+        x = F.relu(self.conv2(x))  # -> (batch, 64, 2, 2)
+        x = x.view(x.size(0), -1)  # Flatten to (batch, 256)
         x = F.relu(self.fc1(x))
         return self.fc2(x)
 

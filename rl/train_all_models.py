@@ -213,7 +213,7 @@ def main():
     if not args.skip_cnn:
         agent = DQNAgent_CNN(
             epsilon_decay=100000,
-            batch_size=128,  # Smaller batch for CNN memory
+            batch_size=256,  # Increased from 128 for better GPU utilization
             use_reward_shaping=True
         )
         results['dqn_cnn'] = train_model(
@@ -225,7 +225,8 @@ def main():
             use_reward_shaping=True,
             checkpoint_dir=checkpoint_dir,
             log_dir=f'runs/dqn_cnn_{timestamp}',
-            eval_freq=2500
+            eval_freq=5000,  # Reduced from 2500 for less overhead
+            eval_episodes=30  # Reduced from 50
         )
     
     # Summary

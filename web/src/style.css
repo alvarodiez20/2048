@@ -484,6 +484,42 @@ footer a:hover {
   color: var(--accent);
 }
 
+/* Bot Statistics */
+.bot-stats {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.bot-stats.hidden {
+  display: none;
+}
+
+.bot-stats h4 {
+  margin-bottom: 12px;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.bot-stats .stats-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px 16px;
+  font-size: 0.85rem;
+}
+
+.bot-stats .stats-grid span:nth-child(odd) {
+  color: var(--text-secondary);
+}
+
+.bot-stats .stats-grid span:nth-child(even) {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-align: right;
+}
+
 .hidden {
   display: none !important;
 }
