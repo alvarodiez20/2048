@@ -128,7 +128,8 @@ fn compress_and_merge(tiles: &[u8; 4]) -> ([u8; 4], u16) {
         if i + 1 < temp_len && temp[i] == temp[i + 1] && temp[i] != 0 {
             // Merge
             result[write_idx] = temp[i] + 1;
-            score += 1 << result[write_idx]; // 2^(tile+1)
+            // Use saturating arithmetic to avoid overflow in debug builds
+            score = score.saturating_add((1u16 << result[write_idx].min(15)) as u16);
             write_idx += 1;
             i += 2;
         } else {
