@@ -2,6 +2,14 @@
 
 [![CI](https://github.com/alvarodiez20/2048/actions/workflows/ci.yml/badge.svg)](https://github.com/alvarodiez20/2048/actions/workflows/ci.yml)
 [![Deploy](https://github.com/alvarodiez20/2048/actions/workflows/deploy.yml/badge.svg)](https://github.com/alvarodiez20/2048/actions/workflows/deploy.yml)
+[![Latest tag](https://img.shields.io/github/v/tag/alvarodiez20/2048?label=version&sort=semver)](https://github.com/alvarodiez20/2048/tags)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Live demo](https://img.shields.io/badge/demo-GitHub%20Pages-success?logo=github)](https://alvarodiez20.github.io/2048/)
+
+[![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=white)](https://webassembly.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
 
 **[🎮 Play the game online!](https://alvarodiez20.github.io/2048/)**
 
@@ -272,52 +280,48 @@ const isDone = game.isDone();      // boolean
 const legal = game.getLegalActions(); // Uint8Array [Up, Down, Left, Right]
 ```
 
-## 🐍 Future Python RL Integration
+## 🤖 Building Your Own Bot
 
-The core engine is designed for easy integration with Python-based reinforcement learning:
+You can create and train your own AI agents using the provided Python environment. We support **Deep Q-Learning (DQN)** and **Convolutional Neural Networks (CNN)** out of the box.
 
-### Approach 1: JSON over stdin/stdout
-
-Use the CLI in headless mode and communicate via JSON:
-
-```python
-import subprocess
-import json
-
-# Run simulations
-result = subprocess.run(
-    ['./target/release/game-2048-cli', '--episodes', '1000', '--policy', 'random'],
-    capture_output=True, text=True
-)
-# Parse output for statistics
+### 1. Setup Environment
+```bash
+cd rl
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
 ```
 
-For a custom RL loop, extend the CLI with a `--json` mode that outputs state after each step.
+### 2. Train a New Model
+Train a Deep Q-Network on the game environment:
 
-### Approach 2: Python Extension (Recommended)
+```bash
+# Train a standard MLP model (50k episodes)
+uv run train.py --model dqn_mlp --episodes 50000
 
-Use [PyO3](https://pyo3.rs/) and [Maturin](https://github.com/PyO3/maturin) to create native Python bindings:
-
-1. Add a new crate `/python` with PyO3 bindings
-2. Expose `Game`, `Action`, `StepResult` to Python
-3. Build with `maturin develop`
-
-Example Python API (future):
-
-```python
-from game_2048 import Game, Action
-
-env = Game(seed=42)
-
-for _ in range(1000):
-    action = your_policy(env.board)
-    result = env.step(action)
-    
-    if result.done:
-        env.reset(seed=new_seed)
+# Train a CNN model (slower but sees patterns)
+uv run train.py --model dqn_cnn --episodes 20000 --batch-size 256
 ```
 
-### Key Design Decisions for RL
+### 3. Visualise Training
+Track your agent's learning progress with TensorBoard:
+
+```bash
+uv run tensorboard --logdir runs
+```
+Open http://localhost:6006 to see reward plots and game statistics.
+
+### 4. Export for Web
+Once trained, export your model to ONNX format to use it in the web interface:
+
+```bash
+# Export the best checkpoint
+uv run export_onnx.py --model checkpoints/dqn_cnn_best.pt --output ../web/public/models/my_awesome_bot.onnx
+
+# Add it to the web manifest manually (web/public/models/manifest.json) to see it in the UI!
+```
+
+
 
 - **Deterministic**: Same seed + action sequence = same game
 - **Minimal API**: `step(action)` returns everything needed
