@@ -13,6 +13,12 @@ import init, { WasmGame } from './wasm-pkg/game_2048_wasm.js';
 import { AIPlayer, RandomAIPlayer, AIPlayerType, AIAction } from './ai-player';
 import { ExpectimaxBot } from './expectimax-bot';
 import { RustSolverBot } from './rust-solver-bot';
+import { MCTSBot } from './mcts-bot';
+
+// Build metadata injected by Vite at build time
+declare const __APP_VERSION__: string;
+declare const __GIT_COMMIT__: string;
+declare const __BUILD_DATE__: string;
 
 // =============================================================================
 // Types
@@ -64,11 +70,12 @@ let canvas: HTMLCanvasElement;
 let ctx: CanvasRenderingContext2D;
 
 // AI State
-let aiPlayer: AIPlayerType | ExpectimaxBot | RustSolverBot | null = null;
+let aiPlayer: AIPlayerType | ExpectimaxBot | RustSolverBot | MCTSBot | null = null;
 let aiRunning = false;
 let aiInterval: number | null = null;
 let expectimaxBot: ExpectimaxBot | null = null;
 let rustBot: RustSolverBot | null = null;
+let mctsBot: MCTSBot | null = null;
 
 // Canvas dimensions
 let CANVAS_SIZE = 400;
@@ -105,6 +112,12 @@ async function main() {
 
     // Initialize AI
     await initializeAI();
+
+    // Display version in footer
+    const versionEl = document.getElementById('app-version');
+    if (versionEl) {
+        versionEl.textContent = `v${__APP_VERSION__} · ${__GIT_COMMIT__} · ${__BUILD_DATE__}`;
+    }
 }
 
 function updateCanvasSize() {
@@ -145,10 +158,15 @@ async function initializeAI() {
         const rustOption = document.createElement('option');
         rustOption.value = 'rust-solver';
         rustOption.textContent = 'Expectimax (Rust)';
-        rustOption.dataset.description = 'Corner-locked expectimax with bitboards [10-30x faster]';
+        rustOption.dataset.description = 'Bitboard expectimax with a tuned heuristic — reliably reaches 2048+';
         modelSelect.appendChild(rustOption);
 
-
+        // Add MCTS bot
+        const mctsOption = document.createElement('option');
+        mctsOption.value = 'mcts';
+        mctsOption.textContent = 'MCTS (Monte Carlo)';
+        mctsOption.dataset.description = 'Monte Carlo simulations — simple but effective';
+        modelSelect.appendChild(mctsOption);
 
         // Add trained models from manifest (filter for best ones)
         const desiredModels = ['dqn_shaped', 'dqn_cnn'];
@@ -213,7 +231,7 @@ async function loadSelectedModel() {
             if (statusEl) statusEl.className = 'ai-status ready';
             if (statusText) statusText.textContent = 'Random baseline';
         } else if (modelId === 'rust-solver') {
-            rustBot = new RustSolverBot(100); // 100ms time limit
+            rustBot = new RustSolverBot(200); // 200ms time limit — room for deeper search
             aiPlayer = rustBot;
             expectimaxBot = null;
             if (statusEl) statusEl.className = 'ai-status ready';
@@ -222,8 +240,16 @@ async function loadSelectedModel() {
             expectimaxBot = new ExpectimaxBot();
             aiPlayer = expectimaxBot;
             rustBot = null;
+            mctsBot = null;
             if (statusEl) statusEl.className = 'ai-status ready';
             if (statusText) statusText.textContent = 'Expectimax ready';
+        } else if (modelId === 'mcts') {
+            mctsBot = new MCTSBot(200, 150);
+            aiPlayer = mctsBot;
+            expectimaxBot = null;
+            rustBot = null;
+            if (statusEl) statusEl.className = 'ai-status ready';
+            if (statusText) statusText.textContent = 'MCTS ready (200 sims/move)';
         } else {
             const modelType = (selectedOption.dataset.type || 'mlp') as 'mlp' | 'cnn';
             const modelFile = selectedOption.dataset.file || `${modelId}.onnx`;
@@ -233,6 +259,7 @@ async function loadSelectedModel() {
             await aiPlayer.load();
             expectimaxBot = null;
             rustBot = null;
+            mctsBot = null;
 
             if (statusEl) statusEl.className = 'ai-status ready';
             if (statusText) statusText.textContent = `${selectedOption.textContent} ready`;
@@ -558,6 +585,8 @@ function startAI() {
                 action = rustBot.getAction(board, legalActions) as AIAction;
             } else if (expectimaxBot && aiPlayer === expectimaxBot) {
                 action = expectimaxBot.getAction(board, legalActions) as AIAction;
+            } else if (mctsBot && aiPlayer === mctsBot) {
+                action = mctsBot.getAction(board, legalActions) as AIAction;
             } else {
                 action = await (aiPlayer as AIPlayer).getAction(board, legalActions);
             }

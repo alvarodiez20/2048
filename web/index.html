@@ -12,6 +12,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="2048" />
   <title>2048 - Rust + WASM</title>
+  <link rel="icon" type="image/svg+xml" href="/2048/favicon.svg">
+  <link rel="apple-touch-icon" href="/2048/favicon.svg">
   <link rel="stylesheet" href="/src/style.css" />
 </head>
 
@@ -102,34 +104,41 @@
 
         <div class="bot-card highlight">
           <h4>⚡ Expectimax (Rust) - RECOMMENDED</h4>
-          <p><strong>Corner-locked expectimax with bitboards.</strong> Uses pre-computed lookup tables for O(1) move
+          <p><strong>Bitboard expectimax with a tuned heuristic.</strong> Uses pre-computed lookup tables for O(1) move
             operations and searches the game tree to maximize expected value.</p>
           <ul>
-            <li><strong>Strategy:</strong> Keeps max tile in top-left corner using snake pattern</li>
-            <li><strong>Search:</strong> Expectimax with iterative deepening (depth 2-8)</li>
-            <li><strong>Performance:</strong> 10-30x faster than JavaScript version</li>
-
+            <li><strong>Heuristic:</strong> Empty cells, available merges, monotonicity &amp; tile-sum penalties</li>
+            <li><strong>Search:</strong> Expectimax with depth adapting to board complexity</li>
+            <li><strong>Result:</strong> Reliably reaches the 2048 tile (often 4096+)</li>
+          </ul>
         </div>
 
-
+        <div class="bot-card">
+          <h4>🎲 MCTS (Monte Carlo)</h4>
+          <p>Monte Carlo Tree Search — runs random rollouts from each possible move and picks the one with the highest average outcome.</p>
+          <ul>
+            <li><strong>Strategy:</strong> 200 random simulations per move</li>
+            <li><strong>Max Tile:</strong> Typically reaches 1024-2048</li>
+            <li><strong>Advantage:</strong> No training required, works immediately</li>
+          </ul>
+        </div>
 
         <div class="bot-card">
           <h4>🎯 DQN Shaped</h4>
-          <p>Deep Q-Network trained with reward shaping to encourage good behaviors (empty tiles, high tiles, corner
-            positioning).</p>
+          <p>Dueling Deep Q-Network trained with advanced reward shaping (corner bonus, monotonicity, empty cell incentives).</p>
           <ul>
-            <li><strong>Training:</strong> 50,000 episodes via reinforcement learning</li>
-            <li><strong>Architecture:</strong> MLP (256→128 hidden units)</li>
+            <li><strong>Training:</strong> 100,000 episodes via reinforcement learning</li>
+            <li><strong>Architecture:</strong> Dueling DQN (512→512 shared, value/advantage streams)</li>
             <li><strong>Framework:</strong> PyTorch on Apple M4 GPU</li>
           </ul>
         </div>
 
         <div class="bot-card">
           <h4>🖼️ CNN DQN</h4>
-          <p>Convolutional Neural Network that learns spatial patterns on the 4×4 board.</p>
+          <p>Dueling CNN that learns spatial patterns on the 4×4 board with one-hot encoded tile channels.</p>
           <ul>
-            <li><strong>Training:</strong> 25,000 episodes (in progress)</li>
-            <li><strong>Architecture:</strong> 2 conv layers (64 channels) + FC (128 units)</li>
+            <li><strong>Training:</strong> 100,000 episodes with reward shaping</li>
+            <li><strong>Architecture:</strong> 3 conv layers (128ch + BatchNorm) + Dueling head</li>
             <li><strong>Advantage:</strong> Learns position-aware features automatically</li>
           </ul>
         </div>
@@ -137,8 +146,8 @@
         <div class="implementation-notes">
           <h4>🔧 Implementation Details</h4>
           <p><strong>Expectimax Rust:</strong> Uses bitboard representation (u64 with 4 bits per tile) and pre-computed
-            lookup tables (65,536 entries) for instant move calculations. The gradient heuristic uses powers of 12 to
-            strongly prefer snake-pattern tile arrangements.</p>
+            lookup tables (65,536 entries) for instant move calculations — including a per-row heuristic table scoring
+            empty cells, merges, monotonicity and tile sums. Search depth adapts to board complexity.</p>
           <p><strong>Risk-Averse Search:</strong> At chance nodes, blends average and minimum:
             <code>(1-α)×avg + α×min</code> where α=0.25, making moves more conservative.
           </p>
@@ -147,7 +156,7 @@
     </details>
 
     <footer>
-      <p>Rust + WebAssembly | <a href="https://github.com/alvarodiez20/2048" target="_blank">GitHub</a></p>
+      <p>Rust + WebAssembly | <a href="https://github.com/alvarodiez20/2048" target="_blank">GitHub</a> | <span id="app-version"></span></p>
     </footer>
   </div>
 

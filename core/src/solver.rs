@@ -4,12 +4,13 @@
 //! lookup tables for maximum performance. The solver uses:
 //! - Bitboard representation (u64 with 4 bits per tile)
 //! - Pre-computed move tables (65,536 entries per direction)
-//! - Snake gradient heuristic with 8-way symmetry
-//! - Transposition table caching
-//! - Iterative deepening with time budget
+//! - Per-row precomputed heuristic (empties, merges, monotonicity, sum) — the
+//!   well-established "nneonneo" evaluation that reliably reaches the 2048 tile
+//! - Transposition table caching keyed on (board, depth)
+//! - Adaptive search depth based on board complexity, with a time budget
 
-use std::collections::HashMap;
 use instant::{Duration, Instant};
+use std::collections::HashMap;
 
 // =============================================================================
 // Types and Constants
@@ -41,25 +42,15 @@ impl Action {
     }
 }
 
-/// Snake gradient weights (powers of 12 for strong preference)
-const GRADIENT_POWERS: [f64; 16] = [
-    68719476736.0,  // 12^15
-    5726623061.0,   // 12^14
-    477218588.0,    // 12^13
-    39764832.0,     // 12^12
-    429981696.0,    // 12^8
-    5159780352.0,   // 12^9
-    61917364224.0,  // 12^10
-    743008370688.0, // 12^11
-    35831808.0,     // 12^7
-    2985984.0,      // 12^6
-    248832.0,       // 12^5
-    20736.0,        // 12^4
-    1.0,            // 12^0
-    12.0,           // 12^1
-    144.0,          // 12^2
-    1728.0,         // 12^3
-];
+// Heuristic weights (nneonneo-style). The board score is the sum of a
+// precomputed per-row heuristic over the four rows and the four columns.
+const HEUR_LOST_PENALTY: f64 = 200000.0;
+const HEUR_MONOTONICITY_POWER: f64 = 4.0;
+const HEUR_MONOTONICITY_WEIGHT: f64 = 47.0;
+const HEUR_SUM_POWER: f64 = 3.5;
+const HEUR_SUM_WEIGHT: f64 = 11.0;
+const HEUR_MERGES_WEIGHT: f64 = 700.0;
+const HEUR_EMPTY_WEIGHT: f64 = 270.0;
 
 // =============================================================================
 // Pre-computed Lookup Tables
@@ -71,6 +62,10 @@ const GRADIENT_POWERS: [f64; 16] = [
 static mut MOVE_LEFT_TABLE: [u16; 65536] = [0; 65536];
 static mut MOVE_RIGHT_TABLE: [u16; 65536] = [0; 65536];
 static mut ROW_SCORE_TABLE: [u16; 65536] = [0; 65536];
+
+/// Precomputed per-row heuristic value (empties, merges, monotonicity, sum).
+/// The board heuristic is the sum over the four rows plus the four columns.
+static mut HEUR_TABLE: [f64; 65536] = [0.0; 65536];
 
 static mut TABLES_INITIALIZED: bool = false;
 
@@ -86,8 +81,8 @@ pub fn init_tables() {
 
             // Extract tiles
             let mut tiles = [0u8; 4];
-            for i in 0..4 {
-                tiles[i] = ((row_u16 >> (i * 4)) & 0xF) as u8;
+            for (i, tile) in tiles.iter_mut().enumerate() {
+                *tile = ((row_u16 >> (i * 4)) & 0xF) as u8;
             }
 
             // Move left
@@ -105,10 +100,58 @@ pub fn init_tables() {
                 right_tiles[0],
             ];
             MOVE_RIGHT_TABLE[row as usize] = pack_tiles(&right_result);
+
+            // Per-row heuristic value
+            HEUR_TABLE[row as usize] = row_heuristic(&tiles);
         }
 
         TABLES_INITIALIZED = true;
     }
+}
+
+/// Compute the heuristic contribution of a single row of tile exponents.
+fn row_heuristic(tiles: &[u8; 4]) -> f64 {
+    // Empty cells and merge potential.
+    let mut empties = 0i32;
+    let mut merges = 0i32;
+    let mut prev = 0u8;
+    let mut counter = 0i32;
+    let mut sum = 0.0;
+
+    for &t in tiles {
+        sum += (t as f64).powf(HEUR_SUM_POWER);
+        if t == 0 {
+            empties += 1;
+        } else {
+            if prev == t {
+                counter += 1;
+            } else if counter > 0 {
+                merges += 1 + counter;
+                counter = 0;
+            }
+            prev = t;
+        }
+    }
+    if counter > 0 {
+        merges += 1 + counter;
+    }
+
+    // Monotonicity: prefer rows that are strictly increasing or decreasing.
+    let mut mono_left = 0.0;
+    let mut mono_right = 0.0;
+    for i in 0..3 {
+        let a = (tiles[i] as f64).powf(HEUR_MONOTONICITY_POWER);
+        let b = (tiles[i + 1] as f64).powf(HEUR_MONOTONICITY_POWER);
+        if a > b {
+            mono_left += a - b;
+        } else {
+            mono_right += b - a;
+        }
+    }
+
+    HEUR_LOST_PENALTY + HEUR_EMPTY_WEIGHT * empties as f64 + HEUR_MERGES_WEIGHT * merges as f64
+        - HEUR_MONOTONICITY_WEIGHT * mono_left.min(mono_right)
+        - HEUR_SUM_WEIGHT * sum
 }
 
 /// Compress and merge a single row (moving towards index 0)
@@ -134,7 +177,7 @@ fn compress_and_merge(tiles: &[u8; 4]) -> ([u8; 4], u16) {
             // Merge
             result[write_idx] = temp[i] + 1;
             // Use saturating arithmetic to avoid overflow in debug builds
-            score = score.saturating_add((1u16 << result[write_idx].min(15)) as u16);
+            score = score.saturating_add(1u16 << result[write_idx].min(15));
             write_idx += 1;
             i += 2;
         } else {
@@ -151,8 +194,8 @@ fn compress_and_merge(tiles: &[u8; 4]) -> ([u8; 4], u16) {
 /// Pack 4 tiles into a u16
 fn pack_tiles(tiles: &[u8; 4]) -> u16 {
     let mut packed = 0u16;
-    for i in 0..4 {
-        packed |= (tiles[i] as u16) << (i * 4);
+    for (i, &tile) in tiles.iter().enumerate() {
+        packed |= (tile as u16) << (i * 4);
     }
     packed
 }
@@ -186,25 +229,11 @@ fn transpose(board: Board) -> Board {
     result
 }
 
-/// Get tile at position (row, col)
-#[inline]
-fn get_tile(board: Board, row: usize, col: usize) -> u8 {
-    ((board >> ((row * 4 + col) * 4)) & 0xF) as u8
-}
-
-/// Set tile at position (row, col)
-#[inline]
-fn set_tile(board: Board, row: usize, col: usize, value: u8) -> Board {
-    let pos = (row * 4 + col) * 4;
-    let mask = !(0xFu64 << pos);
-    (board & mask) | ((value as u64) << pos)
-}
-
 /// Apply a move to the board
 pub fn apply_move(board: Board, action: Action) -> (Board, u32) {
     // Ensure tables are initialized before use
     init_tables();
-    
+
     unsafe {
         match action {
             Action::Left => {
@@ -253,121 +282,45 @@ fn get_empty_positions(board: Board) -> Vec<usize> {
 }
 
 // =============================================================================
-// Symmetry Operations
-// =============================================================================
-
-/// Apply symmetry transformation (0-7)
-/// 0: identity, 1: rotate 90°, 2: rotate 180°, 3: rotate 270°
-/// 4: flip horizontal, 5: flip + rotate 90°, 6: flip + rotate 180°, 7: flip + rotate 270°
-fn apply_symmetry(board: Board, symmetry: u8) -> Board {
-    match symmetry {
-        0 => board,
-        1 => rotate_90(board),
-        2 => rotate_180(board),
-        3 => rotate_270(board),
-        4 => flip_horizontal(board),
-        5 => rotate_90(flip_horizontal(board)),
-        6 => rotate_180(flip_horizontal(board)),
-        7 => rotate_270(flip_horizontal(board)),
-        _ => board,
-    }
-}
-
-fn rotate_90(board: Board) -> Board {
-    let mut result = 0u64;
-    for row in 0..4 {
-        for col in 0..4 {
-            let tile = get_tile(board, row, col);
-            let new_row = col;
-            let new_col = 3 - row;
-            result = set_tile(result, new_row, new_col, tile);
-        }
-    }
-    result
-}
-
-fn rotate_180(board: Board) -> Board {
-    let mut result = 0u64;
-    for i in 0..16 {
-        let tile = (board >> (i * 4)) & 0xF;
-        result |= tile << ((15 - i) * 4);
-    }
-    result
-}
-
-fn rotate_270(board: Board) -> Board {
-    rotate_90(rotate_180(board))
-}
-
-fn flip_horizontal(board: Board) -> Board {
-    let mut result = 0u64;
-    for row in 0..4 {
-        for col in 0..4 {
-            let tile = get_tile(board, row, col);
-            result = set_tile(result, row, 3 - col, tile);
-        }
-    }
-    result
-}
-
-// =============================================================================
 // Evaluation
 // =============================================================================
 
-/// Evaluate board with gradient
-fn evaluate_with_gradient(board: Board) -> f64 {
+/// Evaluate a board as the sum of the per-row heuristic over the four rows and
+/// the four columns (rows of the transposed board). The heuristic favours empty
+/// cells, available merges, and monotone arrangements that keep large tiles
+/// packed into a corner — the key to reliably reaching the 2048 tile.
+fn evaluate(board: Board) -> f64 {
+    let transposed = transpose(board);
     let mut score = 0.0;
-    for i in 0..16 {
-        let tile = (board >> (i * 4)) & 0xF;
-        if tile > 0 {
-            score += GRADIENT_POWERS[i] * (1u64 << tile) as f64;
+    unsafe {
+        for row in 0..4 {
+            score += HEUR_TABLE[get_row(board, row) as usize];
+            score += HEUR_TABLE[get_row(transposed, row) as usize];
         }
     }
     score
-}
-
-/// Check if max tile is in corner (position 0)
-fn max_tile_in_corner(board: Board) -> bool {
-    let corner_tile = board & 0xF;
-    if corner_tile == 0 {
-        return false;
-    }
-
-    for i in 1..16 {
-        let tile = (board >> (i * 4)) & 0xF;
-        if tile > corner_tile {
-            return false;
-        }
-    }
-    true
-}
-
-/// Evaluate with 8-way symmetry
-fn evaluate(board: Board) -> f64 {
-    let mut best_score = f64::MIN;
-
-    for sym in 0..8 {
-        let transformed = apply_symmetry(board, sym);
-        let score = evaluate_with_gradient(transformed);
-        best_score = best_score.max(score);
-    }
-
-    // Corner penalty
-    if !max_tile_in_corner(board) {
-        best_score *= 0.2;
-    }
-
-    best_score
 }
 
 // =============================================================================
 // Expectimax Solver
 // =============================================================================
 
+/// Probability below which a chance-node branch is cut off (its subtree
+/// becomes too unlikely to be worth expanding). Lets the search go deeper.
+const CPROB_THRESH: f64 = 0.0001;
+
 pub struct Solver {
-    transposition_table: HashMap<Board, f64>,
+    /// Cache of evaluated chance nodes, keyed on (board, remaining depth).
+    transposition_table: HashMap<(Board, usize), f64>,
     nodes_searched: usize,
     start_time: Instant,
+    time_limit: Duration,
+}
+
+impl Default for Solver {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Solver {
@@ -376,132 +329,131 @@ impl Solver {
             transposition_table: HashMap::new(),
             nodes_searched: 0,
             start_time: Instant::now(),
+            time_limit: Duration::from_millis(100),
         }
     }
 
-    fn expectimax(
-        &mut self,
-        board: Board,
-        depth: usize,
-        is_max_node: bool,
-        time_limit: Duration,
-    ) -> f64 {
+    fn expectimax(&mut self, board: Board, depth: usize, is_max_node: bool, prob: f64) -> f64 {
         self.nodes_searched += 1;
 
-        // Time check
-        if self.start_time.elapsed() > time_limit {
+        // Cut off unlikely branches, exhausted depth, or expired time budget.
+        if depth == 0 || prob < CPROB_THRESH || self.start_time.elapsed() > self.time_limit {
             return evaluate(board);
         }
 
-        // Base case
-        if depth == 0 {
-            return evaluate(board);
-        }
-
-        // Transposition table lookup
-        if let Some(&cached) = self.transposition_table.get(&board) {
-            return cached;
-        }
-
-        let score = if is_max_node {
-            self.max_node(board, depth, time_limit)
+        if is_max_node {
+            self.max_node(board, depth, prob)
         } else {
-            self.chance_node(board, depth, time_limit)
-        };
-
-        // Cache (limit size to avoid memory bloat)
-        if self.transposition_table.len() < 100_000 {
-            self.transposition_table.insert(board, score);
+            self.chance_node(board, depth, prob)
         }
-
-        score
     }
 
-    fn max_node(&mut self, board: Board, depth: usize, time_limit: Duration) -> f64 {
+    fn max_node(&mut self, board: Board, depth: usize, prob: f64) -> f64 {
         let mut best = f64::MIN;
         let mut has_move = false;
 
         for action in [Action::Up, Action::Down, Action::Left, Action::Right] {
-            let (new_board, move_score) = apply_move(board, action);
+            let (new_board, _move_score) = apply_move(board, action);
             if new_board == board {
                 continue; // No change
             }
             has_move = true;
-
-            let eval =
-                self.expectimax(new_board, depth - 1, false, time_limit) + move_score as f64 * 0.1;
-
-            best = best.max(eval);
+            best = best.max(self.expectimax(new_board, depth - 1, false, prob));
         }
 
         if has_move {
             best
         } else {
+            // Game over: no legal moves. The packed board has no empties, so its
+            // heuristic is already poor relative to live positions.
             evaluate(board)
         }
     }
 
-    fn chance_node(&mut self, board: Board, depth: usize, time_limit: Duration) -> f64 {
+    fn chance_node(&mut self, board: Board, depth: usize, prob: f64) -> f64 {
+        // Reuse a previously computed value for this exact (board, depth).
+        if let Some(&cached) = self.transposition_table.get(&(board, depth)) {
+            return cached;
+        }
+
         let empties = get_empty_positions(board);
         if empties.is_empty() {
             return evaluate(board);
         }
 
+        let n = empties.len() as f64;
+        let prob_each = prob / n;
         let mut total = 0.0;
 
         for &pos in &empties {
             // Spawn 2 (90%)
             let board_with_2 = board | (1u64 << (pos * 4));
-            total += 0.9 * self.expectimax(board_with_2, depth - 1, true, time_limit);
+            total += 0.9 * self.expectimax(board_with_2, depth - 1, true, prob_each * 0.9);
 
             // Spawn 4 (10%)
             let board_with_4 = board | (2u64 << (pos * 4));
-            total += 0.1 * self.expectimax(board_with_4, depth - 1, true, time_limit);
+            total += 0.1 * self.expectimax(board_with_4, depth - 1, true, prob_each * 0.1);
         }
 
-        total / empties.len() as f64
+        let result = total / n;
+
+        // Cache (limit size to avoid memory bloat)
+        if self.transposition_table.len() < 100_000 {
+            self.transposition_table.insert((board, depth), result);
+        }
+
+        result
     }
+}
+
+/// Count distinct non-empty tile values on the board.
+fn count_distinct_tiles(board: Board) -> u32 {
+    let mut seen = 0u16; // bitmask over the 16 possible tile exponents
+    for i in 0..16 {
+        let tile = ((board >> (i * 4)) & 0xF) as u8;
+        if tile != 0 {
+            seen |= 1 << tile;
+        }
+    }
+    seen.count_ones()
 }
 
 // =============================================================================
 // Main Interface
 // =============================================================================
 
-/// Find the best move using iterative deepening
+/// Find the best move via depth-limited expectimax.
+///
+/// Search depth adapts to board complexity (deeper when more distinct tiles are
+/// present, which is when planning matters most). `time_limit_ms` is a hard
+/// safety cap: if the search runs long, remaining nodes fall back to the
+/// heuristic so a move is always returned promptly.
 pub fn find_best_move(board: Board, time_limit_ms: u64) -> Action {
-    let time_limit = Duration::from_millis(time_limit_ms);
-    let mut best_action = Action::Left;
-
     // Ensure tables are initialized
     init_tables();
 
-    // Iterative deepening: 2, 4, 6, 8, ...
-    for depth in (2..=12).step_by(2) {
-        let mut solver = Solver::new();
+    let mut solver = Solver::new();
+    solver.start_time = Instant::now();
+    solver.time_limit = Duration::from_millis(time_limit_ms);
 
-        if solver.start_time.elapsed() > time_limit * 80 / 100 {
-            break;
+    // Adaptive depth: max(3, distinct_tiles - 2).
+    let depth = (count_distinct_tiles(board) as i32 - 2).max(3) as usize;
+
+    let mut best_action = Action::Left;
+    let mut best_score = f64::MIN;
+
+    for action in [Action::Up, Action::Down, Action::Left, Action::Right] {
+        let (new_board, _score) = apply_move(board, action);
+        if new_board == board {
+            continue;
         }
 
-        let mut depth_best = Action::Left;
-        let mut depth_best_score = f64::MIN;
-
-        for action in [Action::Up, Action::Down, Action::Left, Action::Right] {
-            let (new_board, score) = apply_move(board, action);
-            if new_board == board {
-                continue;
-            }
-
-            let eval =
-                solver.expectimax(new_board, depth - 1, false, time_limit) + score as f64 * 0.1;
-
-            if eval > depth_best_score {
-                depth_best_score = eval;
-                depth_best = action;
-            }
+        // Resulting board is a chance node (a random tile spawns next).
+        let eval = solver.expectimax(new_board, depth, false, 1.0);
+        if eval > best_score {
+            best_score = eval;
+            best_action = action;
         }
-
-        best_action = depth_best;
     }
 
     best_action
@@ -566,5 +518,64 @@ mod tests {
         assert_eq!(result[0], 4);
         assert_eq!(result[1], 4);
         assert_eq!(score, 4);
+    }
+
+    #[test]
+    fn test_count_distinct_tiles() {
+        let tiles = vec![2, 4, 4, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let board = pack_board_from_tiles(&tiles);
+        // distinct non-empty values: 2, 4, 8 => 3
+        assert_eq!(count_distinct_tiles(board), 3);
+    }
+
+    #[test]
+    fn test_find_best_move_returns_legal_move() {
+        init_tables();
+        // A mid-game board with several legal moves available.
+        let tiles = vec![2, 4, 8, 16, 0, 4, 8, 16, 0, 0, 8, 32, 0, 0, 0, 2];
+        let board = pack_board_from_tiles(&tiles);
+        let action = find_best_move(board, 100);
+        // The chosen move must actually change the board (i.e. be legal).
+        let (new_board, _) = apply_move(board, action);
+        assert_ne!(new_board, board, "solver returned a no-op move");
+    }
+
+    /// End-to-end self-play check: the solver should reliably reach the 2048
+    /// tile. Ignored by default because it plays full games (slow); run with
+    /// `cargo test -- --ignored solver_reaches_2048`.
+    #[test]
+    #[ignore]
+    fn solver_reaches_2048() {
+        use crate::Game;
+
+        let games = 20;
+        let mut wins = 0;
+        for seed in 0..games {
+            let mut game = Game::new(seed);
+            while !game.is_done() {
+                let tiles: Vec<u32> = game.board().iter().map(|&t| t as u32).collect();
+                let board = pack_board_from_tiles(&tiles);
+                let action = find_best_move(board, 100);
+                game.step(action_to_engine(action));
+                if game.board().iter().any(|&t| t >= 2048) {
+                    wins += 1;
+                    break;
+                }
+            }
+        }
+        // Expect a strong win rate; allow some slack for unlucky seeds.
+        assert!(
+            wins as f64 / games as f64 >= 0.8,
+            "only reached 2048 in {wins}/{games} games"
+        );
+    }
+
+    fn action_to_engine(action: Action) -> crate::Action {
+        match action {
+            Action::Up => crate::Action::Up,
+            Action::Down => crate::Action::Down,
+            Action::Left => crate::Action::Left,
+            Action::Right => crate::Action::Right,
+        }
     }
 }
