@@ -1,11 +1,11 @@
 """
 Deep Q-Network (DQN) Agent for 2048
 
-This module implements a DQN agent with:
+This module implements a Dueling DQN agent with:
+- Dueling architecture (separate value and advantage streams)
 - Experience replay buffer
-- Target network
-- Epsilon-greedy exploration
-- Prioritized experience replay (optional)
+- Target network with soft updates
+- Epsilon-greedy exploration with slower decay
 """
 
 import torch
@@ -25,7 +25,7 @@ Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state'
 class ReplayBuffer:
     """Experience replay buffer for DQN training."""
     
-    def __init__(self, capacity: int = 100000):
+    def __init__(self, capacity: int = 500000):
         self.buffer = deque(maxlen=capacity)
     
     def push(self, state: np.ndarray, action: int, reward: float, 
@@ -41,23 +41,34 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
-class DQN(nn.Module):
+class DuelingDQN(nn.Module):
     """
-    Deep Q-Network for 2048.
+    Dueling Deep Q-Network for 2048.
+    
+    Uses separate value and advantage streams for better action evaluation.
     
     Architecture:
     - Input: 16 normalized tile values (log2/17)
-    - Hidden layers: 256 -> 256 -> 128
-    - Output: 4 Q-values (one per action)
+    - Shared: 512 -> 512
+    - Value stream: 256 -> 1
+    - Advantage stream: 256 -> 4
+    - Output: 4 Q-values via Q = V + (A - mean(A))
     """
     
-    def __init__(self, input_size: int = 16, hidden_size: int = 256, output_size: int = 4):
+    def __init__(self, input_size: int = 16, hidden_size: int = 512, output_size: int = 4):
         super().__init__()
         
-        self.fc1 = nn.Linear(input_size, hidden_size)
-        self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.fc3 = nn.Linear(hidden_size, hidden_size // 2)
-        self.fc4 = nn.Linear(hidden_size // 2, output_size)
+        # Shared feature layers
+        self.shared1 = nn.Linear(input_size, hidden_size)
+        self.shared2 = nn.Linear(hidden_size, hidden_size)
+        
+        # Value stream
+        self.value1 = nn.Linear(hidden_size, hidden_size // 2)
+        self.value2 = nn.Linear(hidden_size // 2, 1)
+        
+        # Advantage stream
+        self.advantage1 = nn.Linear(hidden_size, hidden_size // 2)
+        self.advantage2 = nn.Linear(hidden_size // 2, output_size)
         
         # Initialize weights
         self._init_weights()
@@ -69,10 +80,25 @@ class DQN(nn.Module):
                 nn.init.constant_(m.bias, 0)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        return self.fc4(x)
+        # Shared layers
+        x = F.relu(self.shared1(x))
+        x = F.relu(self.shared2(x))
+        
+        # Value stream
+        v = F.relu(self.value1(x))
+        v = self.value2(v)
+        
+        # Advantage stream
+        a = F.relu(self.advantage1(x))
+        a = self.advantage2(a)
+        
+        # Combine: Q(s,a) = V(s) + A(s,a) - mean(A(s,:))
+        q = v + a - a.mean(dim=-1, keepdim=True)
+        return q
+
+
+# Backward-compatible alias so export_onnx.py and old checkpoints still work
+DQN = DuelingDQN
 
 
 class DQNAgent:
@@ -80,9 +106,10 @@ class DQNAgent:
     DQN Agent for playing 2048.
     
     Uses:
-    - Experience replay
+    - Dueling DQN architecture
+    - Experience replay (500k buffer)
     - Target network (soft updates)
-    - Epsilon-greedy exploration
+    - Slower epsilon-greedy exploration (500k decay)
     """
     
     def __init__(
@@ -91,9 +118,9 @@ class DQNAgent:
         gamma: float = 0.99,
         epsilon_start: float = 1.0,
         epsilon_end: float = 0.01,
-        epsilon_decay: int = 100000,
+        epsilon_decay: int = 500000,
         batch_size: int = 256,
-        buffer_size: int = 100000,
+        buffer_size: int = 500000,
         target_update_freq: int = 1000,
         device: str = None
     ):
@@ -112,8 +139,8 @@ class DQNAgent:
             self.device = torch.device(device)
         
         # Networks
-        self.policy_net = DQN().to(self.device)
-        self.target_net = DQN().to(self.device)
+        self.policy_net = DuelingDQN().to(self.device)
+        self.target_net = DuelingDQN().to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
         

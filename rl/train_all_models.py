@@ -163,9 +163,9 @@ def main():
     parser.add_argument('--skip-basic', action='store_true', help='Skip basic DQN')
     parser.add_argument('--skip-shaped', action='store_true', help='Skip reward-shaped DQN')
     parser.add_argument('--skip-cnn', action='store_true', help='Skip CNN DQN')
-    parser.add_argument('--basic-episodes', type=int, default=100000, help='Episodes for basic DQN')
-    parser.add_argument('--shaped-episodes', type=int, default=50000, help='Episodes for shaped DQN')
-    parser.add_argument('--cnn-episodes', type=int, default=50000, help='Episodes for CNN DQN')
+    parser.add_argument('--basic-episodes', type=int, default=200000, help='Episodes for basic DQN')
+    parser.add_argument('--shaped-episodes', type=int, default=100000, help='Episodes for shaped DQN')
+    parser.add_argument('--cnn-episodes', type=int, default=100000, help='Episodes for CNN DQN')
     args = parser.parse_args()
     
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -176,8 +176,9 @@ def main():
     # Model 1: Basic DQN (longer training)
     if not args.skip_basic:
         agent = DQNAgent(
-            epsilon_decay=200000,  # Slower decay for more exploration
-            batch_size=256
+            epsilon_decay=500000,  # Slower decay for more exploration
+            batch_size=256,
+            buffer_size=500000
         )
         results['dqn_basic_100k'] = train_model(
             agent=agent,
@@ -194,8 +195,9 @@ def main():
     # Model 2: DQN with reward shaping
     if not args.skip_shaped:
         agent = DQNAgent(
-            epsilon_decay=100000,
-            batch_size=256
+            epsilon_decay=500000,
+            batch_size=256,
+            buffer_size=500000
         )
         results['dqn_shaped'] = train_model(
             agent=agent,
@@ -212,8 +214,9 @@ def main():
     # Model 3: CNN DQN with reward shaping
     if not args.skip_cnn:
         agent = DQNAgent_CNN(
-            epsilon_decay=100000,
-            batch_size=256,  # Increased from 128 for better GPU utilization
+            epsilon_decay=500000,
+            batch_size=256,
+            buffer_size=500000,
             use_reward_shaping=True
         )
         results['dqn_cnn'] = train_model(

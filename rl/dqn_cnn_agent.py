@@ -1,8 +1,9 @@
 """
 DQN Agent with CNN Architecture for 2048
 
-Uses a convolutional neural network that treats the board as a 4x4 grid
-with one-hot encoded channels for each tile value.
+Uses a deeper convolutional neural network that treats the board as a 4x4 grid
+with one-hot encoded channels for each tile value. Features a Dueling DQN head
+for better action evaluation.
 """
 
 import torch
@@ -22,7 +23,7 @@ Experience = namedtuple('Experience', ['state', 'action', 'reward', 'next_state'
 class ReplayBuffer:
     """Experience replay buffer for DQN training."""
     
-    def __init__(self, capacity: int = 100000):
+    def __init__(self, capacity: int = 500000):
         self.buffer = deque(maxlen=capacity)
     
     def push(self, state: np.ndarray, action: int, reward: float, 
@@ -58,24 +59,35 @@ def encode_board_onehot(board: np.ndarray) -> np.ndarray:
 
 class DQN_CNN(nn.Module):
     """
-    CNN-based Deep Q-Network for 2048.
+    Dueling CNN-based Deep Q-Network for 2048.
     
     Architecture:
     - Input: 16 channels x 4x4 (one-hot encoded board)
-    - Conv layers extract spatial features
-    - Fully connected layers output Q-values
+    - 3 conv layers with batch norm extract spatial features
+    - Dueling head: separate value and advantage streams
     """
     
     def __init__(self):
         super().__init__()
         
-        # Lighter convolutional layers (reduced from 128 to 64 channels)
-        self.conv1 = nn.Conv2d(16, 64, kernel_size=2, padding=0)  # 4x4 -> 3x3
-        self.conv2 = nn.Conv2d(64, 64, kernel_size=2, padding=0)  # 3x3 -> 2x2
+        # Deeper convolutional layers with batch norm
+        self.conv1 = nn.Conv2d(16, 128, kernel_size=2, padding=0)   # 4x4 -> 3x3
+        self.bn1 = nn.BatchNorm2d(128)
+        self.conv2 = nn.Conv2d(128, 128, kernel_size=2, padding=0)  # 3x3 -> 2x2
+        self.bn2 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=1, padding=0)  # 2x2 -> 2x2 (channel mixing)
+        self.bn3 = nn.BatchNorm2d(128)
         
-        # Simpler fully connected layers
-        self.fc1 = nn.Linear(64 * 2 * 2, 128)  # Reduced from 256
-        self.fc2 = nn.Linear(128, 4)
+        # Feature size after convolutions: 128 * 2 * 2 = 512
+        flat_size = 128 * 2 * 2
+        
+        # Value stream
+        self.value_fc = nn.Linear(flat_size, 256)
+        self.value_out = nn.Linear(256, 1)
+        
+        # Advantage stream
+        self.advantage_fc = nn.Linear(flat_size, 256)
+        self.advantage_out = nn.Linear(256, 4)
         
         self._init_weights()
     
@@ -88,16 +100,26 @@ class DQN_CNN(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # x shape: (batch, 16, 4, 4)
-        x = F.relu(self.conv1(x))  # -> (batch, 64, 3, 3)
-        x = F.relu(self.conv2(x))  # -> (batch, 64, 2, 2)
-        x = x.view(x.size(0), -1)  # Flatten to (batch, 256)
-        x = F.relu(self.fc1(x))
-        return self.fc2(x)
+        x = F.relu(self.bn1(self.conv1(x)))   # -> (batch, 128, 3, 3)
+        x = F.relu(self.bn2(self.conv2(x)))   # -> (batch, 128, 2, 2)
+        x = F.relu(self.bn3(self.conv3(x)))   # -> (batch, 128, 2, 2)
+        x = x.view(x.size(0), -1)             # Flatten to (batch, 512)
+        
+        # Dueling streams
+        v = F.relu(self.value_fc(x))
+        v = self.value_out(v)
+        
+        a = F.relu(self.advantage_fc(x))
+        a = self.advantage_out(a)
+        
+        # Q(s,a) = V(s) + A(s,a) - mean(A(s,:))
+        q = v + a - a.mean(dim=-1, keepdim=True)
+        return q
 
 
 class DQNAgent_CNN:
     """
-    DQN Agent with CNN architecture and improved reward shaping.
+    DQN Agent with Dueling CNN architecture and improved reward shaping.
     """
     
     def __init__(
@@ -106,9 +128,9 @@ class DQNAgent_CNN:
         gamma: float = 0.99,
         epsilon_start: float = 1.0,
         epsilon_end: float = 0.01,
-        epsilon_decay: int = 100000,
+        epsilon_decay: int = 500000,
         batch_size: int = 256,
-        buffer_size: int = 100000,
+        buffer_size: int = 500000,
         target_update_freq: int = 1000,
         use_reward_shaping: bool = True,
         device: str = None
@@ -248,14 +270,13 @@ def shape_reward(game, result: dict, action: int) -> float:
     Advanced reward shaping for better learning.
     
     Bonuses:
-    - Points from merges (base reward)
-    - Corner bonus: max tile in corner
+    - Points from merges (base reward, log-scaled)
+    - Corner bonus: max tile in corner (strong)
+    - Corner penalty: max tile NOT in corner (strong penalty)
     - Monotonicity bonus: tiles arranged in decreasing order
     - Empty cells bonus: more empty cells is good
     - Penalty for invalid moves
     """
-    reward = float(result['reward'])
-    
     if not result['changed']:
         return -10.0  # Penalty for invalid move
     
@@ -266,22 +287,28 @@ def shape_reward(game, result: dict, action: int) -> float:
     max_tile = max(board)
     empty_count = board.count(0)
     
-    # Corner bonus: reward keeping max tile in corner
-    corners = [0, 3, 12, 15]
-    if any(board[c] == max_tile for c in corners):
-        reward += max_tile * 0.1
+    # Base reward: log-scale merge points to prevent magnitude explosion
+    reward = math.log2(result['reward'] + 1) * 2.0 if result['reward'] > 0 else 0.0
     
-    # Edge bonus: second highest should be on edge
+    # Strong corner bonus/penalty: critical for reaching 2048
+    corners = [0, 3, 12, 15]
+    if max_tile >= 8:
+        if any(board[c] == max_tile for c in corners):
+            reward += math.log2(max_tile) * 3.0  # Strong corner bonus
+        else:
+            reward -= math.log2(max_tile) * 2.0  # Penalty when max tile drifts
+    
+    # Edge bonus: second highest should be adjacent to max
     if max_tile > 2:
         edges = [1, 2, 4, 7, 8, 11, 13, 14] + corners
         sorted_tiles = sorted([t for t in board if t > 0], reverse=True)
         if len(sorted_tiles) > 1:
             second_highest = sorted_tiles[1]
             if any(board[e] == second_highest for e in edges):
-                reward += second_highest * 0.05
+                reward += math.log2(second_highest) * 0.5
     
-    # Empty cells bonus
-    reward += empty_count * 2
+    # Empty cells bonus (quadratic — being full is very bad)
+    reward += empty_count * 1.5
     
     # Monotonicity in snake pattern (top-left starting)
     # Row 0: left to right, Row 1: right to left, etc.
@@ -296,9 +323,13 @@ def shape_reward(game, result: dict, action: int) -> float:
             monotonic_score += 1
     reward += monotonic_score * 0.5
     
-    # Big merge bonus
-    if result['reward'] >= 512:
-        reward += result['reward'] * 0.5
+    # Big merge bonus (reaching milestones)
+    if result['reward'] >= 2048:
+        reward += 50.0
+    elif result['reward'] >= 1024:
+        reward += 20.0
+    elif result['reward'] >= 512:
+        reward += 10.0
     
     return reward
 

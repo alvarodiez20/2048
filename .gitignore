@@ -11,12 +11,25 @@ Cargo.lock
 /web/dist/
 /web/.vite/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+
+# RL training artifacts
+rl/runs/
+rl/checkpoints/*.pt
+!rl/checkpoints/.gitkeep
+
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+.claude/
 
 # OS
 .DS_Store
